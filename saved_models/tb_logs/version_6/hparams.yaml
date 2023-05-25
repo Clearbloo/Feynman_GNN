@@ -1,0 +1,30 @@
+c_in: -1
+dataset_size: 500
+filename: QED_data_e_annih_mu.csv
+gnn_layer_dict:
+  GAT: !!python/name:torch_geometric.nn.conv.gat_conv.GATConv ''
+  GCN: !!python/name:torch_geometric.nn.conv.gcn_conv.GCNConv ''
+  GraphConv: !!python/name:torch_geometric.nn.conv.graph_conv.GraphConv ''
+  NNConv: !!python/name:torch_geometric.nn.conv.nn_conv.NNConv ''
+  RGCN: !!python/name:torch_geometric.nn.conv.rgcn_conv.RGCNConv ''
+  Trans: !!python/name:torch_geometric.nn.conv.transformer_conv.TransformerConv ''
+layer_name: GAT
+model_params:
+  attention_heads: 1
+  batch_size: 16
+  dense_neurons: 128
+  dropout_rate: 0.5
+  edge_dim: 12
+  embedding_size: 4
+  gamma: 0.5
+  layers: 2
+  learning_rate: 1
+  lin_dropout_prob: 0.1
+  lrs_step: 10
+  momentum: 0.3
+  out_channels: 8
+  top_k_every_n: 1
+  top_k_ratio: 0.1
+  weight_decay: 0
+reprocess: false
+uniform: 5
