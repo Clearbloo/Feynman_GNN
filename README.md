@@ -15,3 +15,13 @@ This project contains 2 Jupyter notebooks:
 Run dataset builder to construct the datasets. Then run Feynman GNN to train the network and make predictions. 
 
 The results of running the dataset builder are stored in "./data/raw" as csv files
+
+---
+
+# Dataset builder
+Builds csv files containing the data stored as graphs. Currently builds 6 datsets. 3 QED datasets, 1 combined QED dataset, 1 QCD dataset and 1 combined dataset.
+
+---
+
+#Feynman GNN
+Graph neural network architecture is listed in the paper. Trains on a GAT network. Need to choose the arguments for train_feyn(). Some initial values have been included for a working example. Also the hyperparameter example is working for the QED dataset. 
