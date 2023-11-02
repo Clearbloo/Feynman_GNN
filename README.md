@@ -25,3 +25,7 @@ Builds csv files containing the data stored as graphs. Currently builds 6 datset
 
 # Feynman GNN
 Graph neural network architecture is listed in the paper. Trains on a GAT network. Need to choose the arguments for train_feyn(). Some initial values have been included for a working example. Also the hyperparameter example is working for the QED dataset. 
+
+
+# Branch notes
+This branch contains the building out of more diagrams
