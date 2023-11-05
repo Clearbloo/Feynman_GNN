@@ -7,6 +7,11 @@ https://github.com/pyg-team/pytorch_geometric
 * And deepfindr's gnn-project
 https://github.com/deepfindr/gnn-project
 
+# Problems
+requirments.txt isn't working for pytorch because I am running on cpu. need to solve this
+
+# Details
+
 This project contains 2 Jupyter notebooks:
 
 * Dataset builder
