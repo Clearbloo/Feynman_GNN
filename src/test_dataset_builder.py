@@ -1,9 +1,10 @@
 from feynman_dataset_builder import FeynmanGraph
 
-graph = FeynmanGraph(3)
+graph = FeynmanGraph(5)
 graph.add_edge(1, 2)
 graph.add_edge(2, 3)
 graph.add_edge(3, 1)
+graph.add_edge(1,4)
 graph.connect_global_node()
 graph.undirected()
 
