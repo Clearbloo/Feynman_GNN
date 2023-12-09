@@ -181,6 +181,10 @@ class FeynmanGraph:
     * Store the M_fi function
     * Store the node_features
     * Store the adjacency list
+    * Add a graph validation function to check things like number of nodes
+    * Add functionality to add all the edges in one go in the __init__
+    * Consider refactoing the edge_index property
+    * Consider refactoring the adj list format, maybe a list of tuples is better?
     """
 
     def __init__(self, num_nodes: int):
@@ -261,13 +265,27 @@ class FeynmanGraph:
 
     def display_graph(self):
         G = nx.Graph()
-        G.add_nodes_from(self.get_adj_dict().keys())
+        adj_dict = self.get_adj_dict()
+
+        # Add nodes
+        G.add_nodes_from(adj_dict.keys())
+
+        # Add edges
+        for node, neighbors in adj_dict.items():
+            for neighbor in neighbors:
+                G.add_edge(node, neighbor)
+
         # Draw the graph
-        pos = nx.spring_layout(G, seed=42,)  # You can use different layout algorithms
+        pos = nx.spring_layout(G, seed=42)
         nx.draw(G, pos, with_labels=True, node_size=500, node_color='skyblue', font_size=10, font_color='black', font_weight='bold')
+        
+        # The node labels are already added by nx.draw when with_labels=True, so the following lines are not necessary:
+        # labels = {node: node for node in G.nodes()}  # Adding labels to nodes
+        # nx.draw_networkx_labels(G, pos, labels=labels)  # Displaying node labels
+
         plt.title("Graph Visualization")
         plt.show()
-        plt.close()
+
 
 
 # ## Diagram structures
