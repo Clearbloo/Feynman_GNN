@@ -1,6 +1,10 @@
 import math
+from typing import Iterable
+import numpy as np
 import os
+import pandas as pd
 
+from base_feynman_graph import FeynmanGraph
 # TODO convert to registry
 from particles import (
     AntiTop_b,
@@ -14,87 +18,94 @@ from particles import (
     Top_r,
     Up_r,
 )
+
+
+DATASETPATH = "./data"
+raw_filepath = f"{DATASETPATH}/raw"
+
+### **Define constants**
+# Always using natural units in MeV
+
+
+# lepton masses
+m_e = 0.5110
+m_mu = 105.6583755
+m_tau = 1776
+
+# quark masses
+m_up = 2.2
+m_down = 4.7
+m_charm = 1275
+m_strange = 95
+m_top = 172760
+m_bottom = 4180
+
+# massive bosons
+m_W = 80379
+m_Z = 91187
+m_H = 125100
+
+alpha_QED = 1 / 137
+alpha_S = 1
+alpha_W = 1e-6
+q_e = np.sqrt(4 * np.pi * alpha_QED)
+num_edge_feat = 9
+
+
+def graph_combine(graph1, graph2):
+    graph2[1][0] = [
+        x + len(graph1[0]) - 1 for x in graph2[1][0]
+    ]  # The -1 is included because the nodes are numbered starting from 0
+    graph2[1][1] = [x + len(graph1[0]) - 1 for x in graph2[1][1]]
+
+    nodes = graph1[0] + graph2[0]
+    edge_index = [graph1[1][0] + graph2[1][0], graph1[1][1] + graph2[1][1]]
+    edge_feat = graph1[2] + graph2[2]
+
+    return [nodes, edge_index, edge_feat]
+
+
 # ## Diagram structures
 # * s-channel
 # * t-channel
 # * u-channel
 #
 # Need to think if i want these to be instances of the FeynmanGraph class or inherited from...
+# Also need the specific diagrams to be either an instance or inherited from a classs
 
+class S_Channel(FeynmanGraph):
+    def __init__(self):
+        super().__init__()
+        # Add edges
+        edges = [(1,3),(2,3),(3,4),(4,5),(4,6)]
+        self.add_edges(edges)
+        
+        # TODO - add edge and node features. Adding in placeholder for now
+        initial = [1, 0, 0]
+        virtual = [0, 1, 0]
+        final = [0, 0, 1]
+        # Bad idea to have the global node with a different context to the 1-hot
+        # encodings of the individual nodes
+        global_node = [alpha_QED, alpha_W, alpha_S]
+        
+        self.node_feat = [initial, virtual, final, global_node]
+class T_Channel(FeynmanGraph):
+    def __init__(self):
+        super().__init__()
+        # Add edges
+        edges = [(1,2),(2,3),(2,5),(4,5),(5,6)]
+        self.add_edges(edges)
 
-def s_channel():
-    initial = [1, 0, 0]
-    virtual = [0, 1, 0]
-    final = [0, 0, 1]
+        # TODO - add edge and node features
 
-    # Global node (I happen to be lucky in that these are the same size, 3)
-    global_node = [alpha_QED, alpha_W, alpha_S]
+class U_Channel(FeynmanGraph):
+    def __init__(self):
+        super().__init__()
+        # Add edges
+        edges = [(1,2),(2,6),(2,5),(4,5),(5,3)]
+        self.add_edges(edges)
 
-    # Node features
-    node_features = [global_node, initial, initial, virtual, virtual, final, final]
-    num_nodes = len(node_features)
-    s_channel = FeynmanGraph(num_nodes)
-
-    # Adjacency lists. The order in which the first and last two nodes are added IS IMPORTANT. initial_1=node 1. final_5=node 5 etc
-    s_channel.add_edge(1, 3)  # must connect to first initial state
-    s_channel.add_edge(2, 3)  # must connect to second initial state
-    s_channel.add_edge(3, 4)
-    s_channel.add_edge(4, 5)  # must connect to first final state
-    s_channel.add_edge(4, 6)  # must connect to second final state
-
-    s_channel.node_features = node_features
-
-
-def t_channel():
-    initial = [1, 0, 0]
-    virtual = [0, 1, 0]
-    final = [0, 0, 1]
-
-    # Global node
-    global_node = [alpha_QED, alpha_W, alpha_S]
-
-    # Node features
-    node_features = [global_node, initial, initial, virtual, virtual, final, final]
-    num_nodes = len(node_features)
-
-    # Adjacency lists
-    t_chan = FeynmanGraph(num_nodes)
-    t_chan.add_edge(1, 3)
-    t_chan.add_edge(2, 4)
-    t_chan.add_edge(3, 4)
-    t_chan.add_edge(3, 5)
-    t_chan.add_edge(4, 6)
-
-    edge_index = t_chan
-
-    return node_features, edge_index
-
-
-def u_channel():
-    initial = [1, 0, 0]
-    virtual = [0, 1, 0]
-    final = [0, 0, 1]
-
-    # Global node
-    global_node = [alpha_QED, alpha_W, alpha_S]
-
-    # Node features
-    node_features = [global_node, initial, initial, virtual, virtual, final, final]
-    num_nodes = len(node_features)
-
-    # Adjacency lists
-    u_chan = FeynmanGraph(num_nodes)
-    u_chan.add_edge(1, 3)
-    u_chan.add_edge(2, 4)
-    u_chan.add_edge(3, 4)
-    u_chan.add_edge(
-        3, 6
-    )  # in the u-channel, the first initial state connects to the first final state
-
-    edge_index = u_chan
-
-    return node_features, edge_index
-
+        # TODO - add edge and node features
 
 # ## Feynman Diagram builder
 #
@@ -125,6 +136,7 @@ def u_channel():
 def vertex_check(vertex, edge_feat, edge_index):
     """
     Function that returns a true or false based on whether quantities are conserved at the specified vertex
+    # TODO add this to the base class
     """
     # incoming indices since edge_index[1] are the destinations
     inc_indices = [k for k, x in enumerate(edge_index[1]) if x == vertex]
@@ -197,9 +209,9 @@ def diagram_builder(
 
     # cycle through edge_position
     """
-  look at edge positions, take all the indices in edge positions
-  make lists for each 
-  """
+    look at edge positions, take all the indices in edge positions
+    make lists for each 
+    """
 
     # Connect the global node and make the graph undirected
     if global_connect is True:
@@ -292,226 +304,182 @@ def diagram_builder_gluon(
     return graphs[0]
 
 
-def dataframe_builder(
-    theta_min,
-    ang_res,
-    p_res,
-    p_min,
-    p_max,
-    Mfi_squared,
-    graph,
-):
-    """
-    Function to build a dataframe
-    """
-    # Setup: First make the dataframe a long list of arrays. 20,000 data points
-    momenta_range = np.linspace(p_min, p_max, p_res)
-    dataframe = np.empty(shape=(ang_res * p_res, 6), dtype=object)
 
-    # Index to count the graph number
-    graph_count = 0
+# def main():
 
-    for p in momenta_range:
-        for theta in np.linspace(theta_min, np.pi, ang_res):
-            # Graph-level target
-            target = Mfi_squared(p, theta)
+#     # write the matrix element as a function
+#     def Mfi_squared(p, theta):
+#         return (
+#             (q_e**2 * (1 + np.cos(theta))) ** 2 + (q_e**2 * (1 - np.cos(theta))) ** 2
+#         ) / 2
 
-            # Create the dataframe as an numpy array first. Need to add a way to handle empty graphs
-            dataframe[graph_count, 0] = graph[0]
-            dataframe[graph_count, 1] = graph[1]
-            dataframe[graph_count, 2] = graph[2]
-            dataframe[graph_count, 3] = target
-            dataframe[graph_count, 4] = p
-            dataframe[graph_count, 5] = theta
+#     graph = diagram_builder(
+#         E_minus(), E_plus(), Mu_minus(), Mu_plus(), s_channel(), True
+#     )
+#     df_e_annih = dataframe_builder(
+#         0,
+#         ang_res=100,
+#         p_res=100,
+#         p_min=10**3,
+#         p_max=10**6,
+#         Mfi_squared=Mfi_squared,
+#         graph=graph,
+#     )
 
-            # increment the index
-            graph_count += 1
+#     # save the file
+#     df_e_annih_mu = df_e_annih
+#     os.makedirs(raw_filepath, exist_ok=True)
+#     df_e_annih_mu.to_csv(path_or_buf=f"{raw_filepath}/QED_data_e_annih_mu.csv")
 
-    dataframe = pd.DataFrame(
-        dataframe,
-        columns=["x", "edge_index", "edge_attr", "y", "p", "theta"],
-        index=np.arange(0, dataframe.shape[0], 1),
-    )
-    dataframe["y_scaler"] = dataframe["y"].max()
-    dataframe["p_scaler"] = dataframe["p"].max()
-    dataframe["y_norm"] = dataframe["y"] / dataframe["y"].max()
-    dataframe["p_norm"] = dataframe["p"] / dataframe["p"].max()
-    return dataframe
+#     df_e_annih_mu.plot("theta", "y", kind="scatter")
 
+#     # ## **Extending the dataset**
+#     #
+#     # Repeating for
+#     # $$e^-e^+\to e^-e^+$$
+#     #
+#     # This requires the inclusion of the t-channel diagrams
 
-def main():
-    return 0
+#     def Mfi_squared(p, theta):
+#         """
+#         s = p_1^2 + p_2^2 + 2p_1p_2
+#         t = p_1^2 + p_3^2 - 2p_1p_3
+#         """
+#         s = 4 * (m_e**2 + p**2)
+#         t = 2 * m_e**2 - 2 * p**2 * (1 - math.cos(theta))
+#         u = 2 * m_e**2 - 2 * p**2 * (1 + math.cos(theta))
+#         return (
+#             2
+#             * q_e**4
+#             * ((u**2 + t**2) / s**2 + (u**2 + s**2) / t**2 + 2 * u**2 / (s * t))
+#         )  # 8*(q_e**4)*(s**4+t**4+u**4)/(4*s**2*t**2)
 
-    # write the matrix element as a function
-    def Mfi_squared(p, theta):
-        return (
-            (q_e**2 * (1 + np.cos(theta))) ** 2 + (q_e**2 * (1 - np.cos(theta))) ** 2
-        ) / 2
+#     graph_t = diagram_builder(
+#         E_minus(), E_plus(), E_minus(), E_plus(), t_channel(), True
+#     )
+#     graph_s = diagram_builder(
+#         E_minus(), E_plus(), E_minus(), E_plus(), s_channel(), True
+#     )
+#     graph = graph_combine(graph_s, graph_t)
+#     df = dataframe_builder(
+#         0.5,
+#         ang_res=400,
+#         p_res=100,
+#         p_min=10**3,
+#         p_max=10**6,
+#         Mfi_squared=Mfi_squared,
+#         graph=graph,
+#     )
+#     df_e_annih_e = df
+#     df_e_annih = pd.concat([df_e_annih, df], ignore_index=True)
+#     df_merge = df_e_annih
 
-    graph = diagram_builder(
-        E_minus(), E_plus(), Mu_minus(), Mu_plus(), s_channel(), True
-    )
-    df_e_annih = dataframe_builder(
-        0,
-        ang_res=100,
-        p_res=100,
-        p_min=10**3,
-        p_max=10**6,
-        Mfi_squared=Mfi_squared,
-        graph=graph,
-    )
+#     # save the file
+#     os.makedirs(raw_filepath, exist_ok=True)
+#     df_e_annih_e.to_csv(path_or_buf=raw_filepath + "/QED_data_e_annih_e.csv")
+#     df_e_annih.to_csv(path_or_buf=raw_filepath + "/QED_data_e_annih.csv")
 
-    # save the file
-    df_e_annih_mu = df_e_annih
-    os.makedirs(raw_filepath, exist_ok=True)
-    df_e_annih_mu.to_csv(path_or_buf=f"{raw_filepath}/QED_data_e_annih_mu.csv")
+#     """Other combinations"""
 
-    df_e_annih_mu.plot("theta", "y", kind="scatter")
+#     def Mfi_squared(p, theta):
+#         return (
+#             (q_e**2 * (1 + np.cos(theta))) ** 2 + (q_e**2 * (1 - np.cos(theta))) ** 2
+#         ) / 2
 
-    # ## **Extending the dataset**
-    #
-    # Repeating for
-    # $$e^-e^+\to e^-e^+$$
-    #
-    # This requires the inclusion of the t-channel diagrams
+#     graph = diagram_builder(
+#         Mu_minus(), Mu_plus(), E_minus(), E_plus(), s_channel(), True
+#     )
+#     df = dataframe_builder(
+#         0,
+#         ang_res=100,
+#         p_res=100,
+#         p_min=0,
+#         p_max=10**6,
+#         Mfi_squared=Mfi_squared,
+#         graph=graph,
+#     )
+#     df_annih = df_e_annih
+#     df_annih = pd.concat([df_annih, df], ignore_index=True)
 
-    def Mfi_squared(p, theta):
-        """
-        s = p_1^2 + p_2^2 + 2p_1p_2
-        t = p_1^2 + p_3^2 - 2p_1p_3
-        """
-        s = 4 * (m_e**2 + p**2)
-        t = 2 * m_e**2 - 2 * p**2 * (1 - math.cos(theta))
-        u = 2 * m_e**2 - 2 * p**2 * (1 + math.cos(theta))
-        return (
-            2
-            * q_e**4
-            * ((u**2 + t**2) / s**2 + (u**2 + s**2) / t**2 + 2 * u**2 / (s * t))
-        )  # 8*(q_e**4)*(s**4+t**4+u**4)/(4*s**2*t**2)
+#     graph = diagram_builder(
+#         Mu_minus(), Mu_plus(), Mu_minus(), Mu_plus(), s_channel(), True
+#     )
+#     df = dataframe_builder(
+#         0,
+#         ang_res=100,
+#         p_res=100,
+#         p_min=10**3,
+#         p_max=10**6,
+#         Mfi_squared=Mfi_squared,
+#         graph=graph,
+#     )
+#     df_annih = pd.concat([df_annih, df], ignore_index=True)
 
-    graph_t = diagram_builder(
-        E_minus(), E_plus(), E_minus(), E_plus(), t_channel(), True
-    )
-    graph_s = diagram_builder(
-        E_minus(), E_plus(), E_minus(), E_plus(), s_channel(), True
-    )
-    graph = graph_combine(graph_s, graph_t)
-    df = dataframe_builder(
-        0.5,
-        ang_res=400,
-        p_res=100,
-        p_min=10**3,
-        p_max=10**6,
-        Mfi_squared=Mfi_squared,
-        graph=graph,
-    )
-    df_e_annih_e = df
-    df_e_annih = pd.concat([df_e_annih, df], ignore_index=True)
-    df_merge = df_e_annih
+#     # save the file
+#     os.makedirs(raw_filepath, exist_ok=True)
+#     df_annih.to_csv(path_or_buf=raw_filepath + "/QED_data_annih.csv")
 
-    # save the file
-    os.makedirs(raw_filepath, exist_ok=True)
-    df_e_annih_e.to_csv(path_or_buf=raw_filepath + "/QED_data_e_annih_e.csv")
-    df_e_annih.to_csv(path_or_buf=raw_filepath + "/QED_data_e_annih.csv")
+#     df_annih.plot("theta", "y_norm", kind="scatter")
 
-    """Other combinations"""
+#     # ## QCD
 
-    def Mfi_squared(p, theta):
-        return (
-            (q_e**2 * (1 + np.cos(theta))) ** 2 + (q_e**2 * (1 - np.cos(theta))) ** 2
-        ) / 2
+#     def Mfi_squared(p, theta):
+#         """
+#         s = p_1^2 + p_2^2 + 2p_1p_2
+#         t = p_1^2 + p_3^2 - 2p_1p_3
+#         """
+#         if p <= m_top:
+#             return 0
+#         s = 4 * p**2
+#         t = m_top**2 - 2 * p**2 + 2 * p * math.cos(theta) * math.sqrt(p**2 - m_top**2)
+#         u = m_top**2 - 2 * p**2 - 2 * p * math.cos(theta) * math.sqrt(p**2 - m_top**2)
+#         return (
+#             16 * alpha_S**4 * (t**4 + u**4 + 2 * m_top**2 * (2 * s - m_top**2)) / (s**2)
+#         )
 
-    graph = diagram_builder(
-        Mu_minus(), Mu_plus(), E_minus(), E_plus(), s_channel(), True
-    )
-    df = dataframe_builder(
-        0,
-        ang_res=100,
-        p_res=100,
-        p_min=0,
-        p_max=10**6,
-        Mfi_squared=Mfi_squared,
-        graph=graph,
-    )
-    df_annih = df_e_annih
-    df_annih = pd.concat([df_annih, df], ignore_index=True)
+#     graph = diagram_builder_gluon(
+#         Up_r(), AntiUp_b(), Top_r(), AntiTop_b(), s_channel(), True
+#     )
+#     df = dataframe_builder(
+#         0,
+#         ang_res=1000,
+#         p_res=10,
+#         p_min=m_top * 0.9,
+#         p_max=m_top * 2,
+#         Mfi_squared=Mfi_squared,
+#         graph=graph,
+#     )
+#     df_QCD = df
 
-    graph = diagram_builder(
-        Mu_minus(), Mu_plus(), Mu_minus(), Mu_plus(), s_channel(), True
-    )
-    df = dataframe_builder(
-        0,
-        ang_res=100,
-        p_res=100,
-        p_min=10**3,
-        p_max=10**6,
-        Mfi_squared=Mfi_squared,
-        graph=graph,
-    )
-    df_annih = pd.concat([df_annih, df], ignore_index=True)
+#     # save the file
+#     os.makedirs(raw_filepath, exist_ok=True)
+#     df_QCD.to_csv(path_or_buf=raw_filepath + "/QCD_data.csv")
 
-    # save the file
-    os.makedirs(raw_filepath, exist_ok=True)
-    df_annih.to_csv(path_or_buf=raw_filepath + "/QED_data_annih.csv")
+#     df_all = pd.concat([df_merge, df_QCD], ignore_index=True)
+#     df_all.to_csv(path_or_buf=raw_filepath + "/all_data.csv")
 
-    df_annih.plot("theta", "y_norm", kind="scatter")
+#     df_all.plot("theta", "y_norm", kind="scatter")
 
-    # ## QCD
+#     """#**Testing Sampling**"""
 
-    def Mfi_squared(p, theta):
-        """
-        s = p_1^2 + p_2^2 + 2p_1p_2
-        t = p_1^2 + p_3^2 - 2p_1p_3
-        """
-        if p <= m_top:
-            return 0
-        s = 4 * p**2
-        t = m_top**2 - 2 * p**2 + 2 * p * math.cos(theta) * math.sqrt(p**2 - m_top**2)
-        u = m_top**2 - 2 * p**2 - 2 * p * math.cos(theta) * math.sqrt(p**2 - m_top**2)
-        return (
-            16 * alpha_S**4 * (t**4 + u**4 + 2 * m_top**2 * (2 * s - m_top**2)) / (s**2)
-        )
+#     w = df_e_annih_mu["y"].astype(float).round(4)
+#     w_dict = 1 / w.value_counts()
 
-    graph = diagram_builder_gluon(
-        Up_r(), AntiUp_b(), Top_r(), AntiTop_b(), s_channel(), True
-    )
-    df = dataframe_builder(
-        0,
-        ang_res=1000,
-        p_res=10,
-        p_min=m_top * 0.9,
-        p_max=m_top * 2,
-        Mfi_squared=Mfi_squared,
-        graph=graph,
-    )
-    df_QCD = df
+#     def weight_lookup(x):
+#         x = np.round(x, 4)
+#         return w_dict[x]
 
-    # save the file
-    os.makedirs(raw_filepath, exist_ok=True)
-    df_QCD.to_csv(path_or_buf=raw_filepath + "/QCD_data.csv")
+#     df_e_annih_mu["sample_weight"] = df_e_annih_mu["y"].apply(
+#         lambda x: weight_lookup(x)
+#     )
 
-    df_all = pd.concat([df_merge, df_QCD], ignore_index=True)
-    df_all.to_csv(path_or_buf=raw_filepath + "/all_data.csv")
-
-    df_all.plot("theta", "y_norm", kind="scatter")
-
-    """#**Testing Sampling**"""
-
-    w = df_e_annih_mu["y"].astype(float).round(4)
-    w_dict = 1 / w.value_counts()
-
-    def weight_lookup(x):
-        x = np.round(x, 4)
-        return w_dict[x]
-
-    df_e_annih_mu["sample_weight"] = df_e_annih_mu["y"].apply(
-        lambda x: weight_lookup(x)
-    )
-
-    rep_df = df_e_annih_mu.sample(n=1000, weights=df_e_annih_mu["sample_weight"])
-    # print(rep_df['y'])
-    rep_df["y"].hist(bins=10)
+#     rep_df = df_e_annih_mu.sample(n=1000, weights=df_e_annih_mu["sample_weight"])
+#     # print(rep_df['y'])
+#     rep_df["y"].hist(bins=10)
 
 
 if __name__ == "__main__":
-    main()
+    def place_holder():
+        return 0
+    place_holder()
+    # main()
