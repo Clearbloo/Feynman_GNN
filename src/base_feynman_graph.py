@@ -18,8 +18,6 @@ import pandas as pd
 from IPython.display import set_matplotlib_formats
 
 
-from typeguard import typechecked
-
 set_matplotlib_formats("svg", "pdf")  # For export
 matplotlib.rcParams["lines.linewidth"] = 2.0
 
@@ -176,15 +174,13 @@ class FeynmanGraph:
         return sorted(self._adj_list)
 
     @edge_index.setter
-    @typechecked
     def edge_index(self, edges: Iterable[tuple[int, int]]):
         """set additional edge index. Maybe should delete first?"""
         # del self.edge_index
         self.add_edges(edges)
         self.validate_edge_index()
 
-    @typechecked
-    def add_edges(self, edges: Iterable[tuple[int, int]] | tuple[int, int]) -> None:
+    def add_edges(self, edges: Iterable[tuple[int, int]] | tuple[int, int]):
         """
         Adds multiple edges to the graph. Each edge is a tuple of two integers.
 
@@ -209,7 +205,7 @@ class FeynmanGraph:
                 if node < 0:
                     raise ValueError(f"Node index cannot be negative, got: {node}")
 
-        self.add_edges(edges)
+        self._adj_list.update(edges)
         self._nodes.update(itertools.chain.from_iterable(edges))
 
         # Initialize node feature if it doesn't exist already
@@ -307,7 +303,6 @@ class FeynmanGraph:
     def node_feat(self):
         del self._node_feat_dict
 
-    @typechecked
     def add_node_feat(self, node_idx: str, feature: list):
         self._node_feat_dict[node_idx] = feature
 
@@ -347,13 +342,14 @@ class FeynmanGraph:
     def edge_feat(self, edges, feats):
         # TODO - Run checks
         for edge, feat in edges, feats:
+            breakpoint()
             self.add_edge_feat(edge, feat)
 
     @edge_feat.deleter
     def edge_feat(self):
         del self._edge_feat_dict
 
-    def add_edge_feat(self, edge: tuple(int, int), feat):
+    def add_edge_feat(self, edge: tuple[int, int], feat):
         """
         TODO - docstring
         """
@@ -378,7 +374,7 @@ class FeynmanGraph:
 
     # !SECTION
     
-    def dataframe_builder(
+    def build_dfs(
         theta_min,
         ang_res,
         p_res,
