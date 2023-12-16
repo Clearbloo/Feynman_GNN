@@ -7,16 +7,19 @@
 ## Standard libraries
 import math
 import os
-
-import networkx as nx
-import matplotlib.pyplot as plt
+from copy import deepcopy
+from typing import Iterable
 
 import matplotlib
+import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 
 ## Imports for plotting
 from IPython.display import set_matplotlib_formats
+
+# TODO convert to registry
 from particles import (
     AntiTop_b,
     AntiUp_b,
@@ -29,6 +32,7 @@ from particles import (
     Top_r,
     Up_r,
 )
+from typeguard import typechecked
 
 set_matplotlib_formats("svg", "pdf")  # For export
 matplotlib.rcParams["lines.linewidth"] = 2.0
@@ -168,98 +172,167 @@ def graph_combine(graph1, graph2):
 
 class FeynmanGraph:
     """
-    Class for an directed graph stored as an adjacency list. This is a structured as two lists, the first listing the starting nodes of each edge and the second listing the end points
+    Base class for a graph stored as an adjacency list. This is a structured as tuple of source node and destination node that represents a directed edge.
 
-    The global node is the 0th node.
-    num_nodes should include the global node
+    This class can also admit a global node as its 0th node. The graph size is also not enforced, this allows for dynamic graph behaviour.
+
+    The rest of the nodes in the graph should be indexed from 1 being the first node.
 
     TODO
     ---
-    I need this object to have the following functionality. Working backwards from the final result:
-    * Create a dataframe of datapoints
-    *
     * Store the M_fi function
-    * Store the node_features
-    * Store the adjacency list
-    * Add a graph validation function to check things like number of nodes
-    * Add functionality to add all the edges in one go in the __init__
-    * Consider refactoing the edge_index property
-    * Consider refactoring the adj list format, maybe a list of tuples is better?
+    * Create a dataframe of datapoints for different momenta
     """
 
-    def __init__(self, num_nodes: int):
-        # num_nodes should include the global node
-        self.graphsrc = []
-        self.graphdest = []
-        self.node_feat = []
-        self.edge_feat = []
-        self.num_nodes = num_nodes
+    def __init__(self, edges: Iterable[tuple] = None):
+        self._node_feat_dict = {}
+        self._edge_feat_dict = {}
+        self._adj_list = set()
+        self._nodes = set()
+        if edges:
+            self.add_edges(edges)
 
-    def add_node_feat(self, feature):
-        self.node_feat.append(feature)
-
-    def add_edge(self, src, dest):
-        """
-        Add an edge to the adjacency list
-        """
-        self.graphsrc += [src]
-        self.graphdest += [dest]
-
-    def undirected(self):
-        """
-        Make the graph undirected
-        """
-        temp = self.graphsrc
-        self.graphsrc = temp + self.graphdest
-        self.graphdest = self.graphdest + temp
-
-    def connect_global_node(self):
-        for i in range(1, self.num_nodes):
-            self.add_edge(i, 0)
+    def get_num_nodes(self):
+        return len(self._nodes)
 
     def graph_size(self):
         """
         returns the number of edges in the graph. Doubled if self.undirected() has been called
         """
-        return len(self.graphsrc)
+        return len(self.edge_index)
 
-    def get_adj_list(self):
-        return [self.graphsrc, self.graphdest]
-    
-    def get_adj_dict(self):
-        adj_dict = {}
-        for start, end in self.edge_index:
-            if start in adj_dict:
-                adj_dict[start].append(end)
-            else:
-                adj_dict[start] = [end]
-
-            # If your graph is undirected, you should add the reverse edge as well
-            if end in adj_dict:
-                adj_dict[end].append(start)
-            else:
-                adj_dict[end] = [start]
-        return adj_dict
-
+    # SECTION - Edge methods
     @property
     def edge_index(self):
         """
         Returns the edge indices stored as an adjacency list
         """
-        adj_list = self.get_adj_list()
-        edge_list = [(adj_list[0][i], adj_list[1][i]) for i in range(len(adj_list[0]))]
+        return list(self._adj_list)
 
-        return edge_list
+    @edge_index.setter
+    @typechecked
+    def edge_index(self, edges: Iterable[tuple[int, int]]):
+        """set edge index"""
+        self.add_edges(edges)
+        self.validate_edge_index()
 
-    # Debug function to print the graph
-    def print_list(self):
-        print(self.get_adj_list())
+    @typechecked
+    def add_edges(self, edges: Iterable[tuple[int, int]] | tuple[int, int]) -> None:
+        """Add multiple edges to the graph"""
+        # Convert single edge tuple to a list of one edge
+        if isinstance(edges, tuple):
+            edges = [edges]
 
+        # Filter out invalid edges (if any additional checks needed)
+        valid_edges = {
+            edge for edge in edges if isinstance(edge, tuple) and len(edge) == 2
+        }
+        assert valid_edges == set(edges), "Provided invalid edges"
+
+        for edge in valid_edges:
+            self._nodes.update(edge)
+
+        # Add all valid edges in a single operation
+        self._adj_list.update(valid_edges)
+
+    @edge_index.deleter
+    def edge_index(self):
+        del self._adj_list
+
+    def validate_edge_index(self):
+        """
+        Validate the edges in the adjacency list.
+        """
+        for edge in self._adj_list:
+            # Check if each edge is a tuple of two integers
+            if not (
+                isinstance(edge, tuple)
+                and len(edge) == 2
+                and all(isinstance(n, int) for n in edge)
+            ):
+                raise ValueError(f"Invalid edge format: {edge}")
+
+            # Check edge bounds
+            last_node = max(self._nodes)
+            if edge[0] < 0 or edge[0] > last_node or edge[1] < 0 or edge[1] > last_node:
+                raise ValueError(f"Edge out of bounds: {edge}")
+
+    def undirected_edges(self):
+        """
+        Make the graph undirected.
+        """
+        # Create a set for reverse edges
+        reverse_edges = {
+            (e[1], e[0]) for e in self._adj_list if (e[1], e[0]) not in self._adj_list
+        }
+
+        # Update the adjacency list with reverse edges
+        self.add_edges(reverse_edges)
+
+    def connect_global_node(self):
+        """Connect a global node to all other nodes"""
+        # Create edges from the global node to all other nodes
+        global_edges = {(0, n) for n in self._nodes if n != 0}
+
+        # Add all edges to the adjacency list
+        self.add_edges(global_edges)
+
+        # Register global node
+        self._nodes.add(0)
+
+    def get_adj_dict(self):
+        adj_dict = {}
+        for start, end in self.edge_index:
+            if start in adj_dict:
+                adj_dict[start].add(end)
+            else:
+                adj_dict[start] = {end}
+        return adj_dict
+
+    def get_adj_matrix(self):
+        pass
+
+    # !SECTION
+    # SECTION - Node feature methods
+    @property
+    def node_feat(self):
+        """
+        Returns node features
+        """
+        self.validate_node_feat()
+        return [self._node_feat_dict[str(i + 1)] for i in range(self.get_num_nodes())]
+
+    @typechecked
+    def add_node_feat(self, node_idx: str, feature):
+        self._node_feat_dict[node_idx] = feature
+
+    def validate_node_feat(self):
+        for i in range(self.get_num_nodes()):
+            assert self._node_feat_dict[str(i + 1)]
+
+    # !SECTION
+
+    # SECTION - Edge feature methods
+    @property
+    def edge_feat(self):
+        """
+        return edge features
+
+        FIXME - Currently uses a list repr of self.edge_index. Is the guaranteed to be the same ordered everytime?? We need to ensure that when we call self.edge_index and self.edge_feat that each edge feature corresponds to the correct edge in the adjacency list.
+        """
+        self.validate_edge_feat()
+        return [self._edge_feat_dict[e] for e in self.edge_index]
+
+    def validate_edge_feat(self):
+        pass
+
+    # !SECTION
+    # SECTION - Display methods
     def build_dfs(self):
         print(self.edge_index, self.node_feat, self.edge_feat)
         return (
             pd.DataFrame(self.edge_index),
-            pd.DataFrame(self.node_feat),
+            pd.DataFrame(self.node_features),
             pd.DataFrame(self.edge_feat),
         )
 
@@ -277,15 +350,19 @@ class FeynmanGraph:
 
         # Draw the graph
         pos = nx.spring_layout(G, seed=42)
-        nx.draw(G, pos, with_labels=True, node_size=500, node_color='skyblue', font_size=10, font_color='black', font_weight='bold')
-        
-        # The node labels are already added by nx.draw when with_labels=True, so the following lines are not necessary:
-        # labels = {node: node for node in G.nodes()}  # Adding labels to nodes
-        # nx.draw_networkx_labels(G, pos, labels=labels)  # Displaying node labels
+        nx.draw(
+            G,
+            pos,
+            with_labels=True,
+            node_size=500,
+            node_color="skyblue",
+            font_size=10,
+            font_color="black",
+            font_weight="bold",
+        )
 
         plt.title("Graph Visualization")
         plt.show()
-
 
 
 # ## Diagram structures
@@ -296,26 +373,27 @@ class FeynmanGraph:
 # Need to think if i want these to be instances of the FeynmanGraph class or inherited from...
 
 
-initial = [1, 0, 0]
-virtual = [0, 1, 0]
-final = [0, 0, 1]
+def s_channel():
+    initial = [1, 0, 0]
+    virtual = [0, 1, 0]
+    final = [0, 0, 1]
 
-# Global node (I happen to be lucky in that these are the same size, 3)
-global_node = [alpha_QED, alpha_W, alpha_S]
+    # Global node (I happen to be lucky in that these are the same size, 3)
+    global_node = [alpha_QED, alpha_W, alpha_S]
 
-# Node features
-node_features = [global_node, initial, initial, virtual, virtual, final, final]
-num_nodes = len(node_features)
-s_channel = FeynmanGraph(num_nodes)
+    # Node features
+    node_features = [global_node, initial, initial, virtual, virtual, final, final]
+    num_nodes = len(node_features)
+    s_channel = FeynmanGraph(num_nodes)
 
-# Adjacency lists. The order in which the first and last two nodes are added IS IMPORTANT. initial_1=node 1. final_5=node 5 etc
-s_channel.add_edge(1, 3)  # must connect to first initial state
-s_channel.add_edge(2, 3)  # must connect to second initial state
-s_channel.add_edge(3, 4)
-s_channel.add_edge(4, 5)  # must connect to first final state
-s_channel.add_edge(4, 6)  # must connect to second final state
+    # Adjacency lists. The order in which the first and last two nodes are added IS IMPORTANT. initial_1=node 1. final_5=node 5 etc
+    s_channel.add_edge(1, 3)  # must connect to first initial state
+    s_channel.add_edge(2, 3)  # must connect to second initial state
+    s_channel.add_edge(3, 4)
+    s_channel.add_edge(4, 5)  # must connect to first final state
+    s_channel.add_edge(4, 6)  # must connect to second final state
 
-s_channel.node_features = node_features
+    s_channel.node_features = node_features
 
 
 def t_channel():
@@ -612,7 +690,9 @@ def dataframe_builder(
     return dataframe
 
 
-if __name__ == "__main__":
+def main():
+    return 0
+
     # write the matrix element as a function
     def Mfi_squared(p, theta):
         return (
@@ -782,3 +862,7 @@ if __name__ == "__main__":
     rep_df = df_e_annih_mu.sample(n=1000, weights=df_e_annih_mu["sample_weight"])
     # print(rep_df['y'])
     rep_df["y"].hist(bins=10)
+
+
+if __name__ == "__main__":
+    main()
