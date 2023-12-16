@@ -1,4 +1,4 @@
-from feynman_dataset_builder import FeynmanGraph
+from physics.Feynman_GNN.feynman_code.src.base_feynman_graph import FeynmanGraph
 
 graph = FeynmanGraph(edges=[(1,2),(2,3),(2,4),(4,5),(4,6)])
 
