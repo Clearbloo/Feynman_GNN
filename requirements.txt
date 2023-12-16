@@ -75,18 +75,9 @@ tensorboard==2.15.0
 tensorboard-data-server==0.7.2
 tensorboardX==2.6.2.2
 threadpoolctl==3.2.0
-
-# PyTorch
 torch==2.1.0 -f https://download.pytorch.org/whl/cpu
 torchaudio==2.1.0 -f https://download.pytorch.org/whl/cpu
 torchvision==0.16.0 -f https://download.pytorch.org/whl/cpu
-
-# PyTorch Geometric
-torch_geometric==2.4.0
-torch-cluster==1.6.3 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-torch-scatter==2.1.2 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-torch-sparse==0.6.18 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-torch-spline-conv==1.2.2 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
 torchmetrics==1.2.0
 tornado==6.3.3
 tqdm==4.66.1
