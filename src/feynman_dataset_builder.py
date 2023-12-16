@@ -5,9 +5,9 @@
 
 
 ## Standard libraries
+import itertools
 import math
 import os
-from copy import deepcopy
 from typing import Iterable
 
 import matplotlib
@@ -172,32 +172,52 @@ def graph_combine(graph1, graph2):
 
 class FeynmanGraph:
     """
-    Base class for a graph stored as an adjacency list. This is a structured as tuple of source node and destination node that represents a directed edge.
+    Represents a directed graph using an adjacency list, with support for dynamic 
+    graph behavior and optional inclusion of a global node (node 0).
 
-    This class can also admit a global node as its 0th node. The graph size is also not enforced, this allows for dynamic graph behaviour.
+    The graph is structured as a set of tuples representing directed edges. Nodes are 
+    indexed from 1, with the optional global node being the 0th node.
 
-    The rest of the nodes in the graph should be indexed from 1 being the first node.
+    Features:
+    - Add and manage edges and nodes dynamically.
+    - Support for directed and undirected edges.
+    - Node and edge feature storage and validation.
+    - Graph visualization and conversion to DataFrame.
 
-    TODO
-    ---
-    * Store the M_fi function
-    * Create a dataframe of datapoints for different momenta
+    TODO:
+    - Store the M_fi function.
+    - Create a DataFrame of datapoints for different momenta.
+    - Add documentation for feature length for nodes and edges
     """
 
     def __init__(self, edges: Iterable[tuple] = None):
+        """
+        Initializes the FeynmanGraph with an optional set of edges.
+
+        Parameters:
+        - edges (Iterable[tuple], optional): A collection of tuples representing
+        the edges of the graph. Each tuple is a pair of integers (source, destination).
+        """
         self._node_feat_dict = {}
         self._edge_feat_dict = {}
+        # confusingly the adj_list is stored as a set, but it is converted to a list when accessed
         self._adj_list = set()
         self._nodes = set()
         if edges:
             self.add_edges(edges)
 
     def get_num_nodes(self):
+        """
+        Returns the number of unique nodes in the graph.
+
+        Returns:
+        - int: The number of nodes.
+        """
         return len(self._nodes)
 
     def graph_size(self):
         """
-        returns the number of edges in the graph. Doubled if self.undirected() has been called
+        returns the number of edges in the graph. Doubled if undirected has been called
         """
         return len(self.edge_index)
 
@@ -207,7 +227,7 @@ class FeynmanGraph:
         """
         Returns the edge indices stored as an adjacency list
         """
-        return list(self._adj_list)
+        return sorted(self._adj_list)
 
     @edge_index.setter
     @typechecked
@@ -218,22 +238,32 @@ class FeynmanGraph:
 
     @typechecked
     def add_edges(self, edges: Iterable[tuple[int, int]] | tuple[int, int]) -> None:
-        """Add multiple edges to the graph"""
-        # Convert single edge tuple to a list of one edge
+        """
+        Adds multiple edges to the graph. Each edge is a tuple of two integers.
+
+        Parameters:
+        - edges (Iterable[tuple[int, int]] | tuple[int, int]): A collection of edges
+        or a single edge to be added to the graph.
+
+        Raises:
+        - ValueError: If any edge is not a tuple of two integers, or if node indices are invalid.
+        """
         if isinstance(edges, tuple):
             edges = [edges]
 
-        # Filter out invalid edges (if any additional checks needed)
-        valid_edges = {
-            edge for edge in edges if isinstance(edge, tuple) and len(edge) == 2
-        }
-        assert valid_edges == set(edges), "Provided invalid edges"
+        for edge in edges:
+            if not isinstance(edge, tuple) or len(edge) != 2:
+                raise ValueError(f"Edge must be a tuple of two integers, got: {edge}")
 
-        for edge in valid_edges:
-            self._nodes.update(edge)
+            for node in edge:
+                if not isinstance(node, int):
+                    raise ValueError(f"Node in edge must be an integer, got: {node}")
 
-        # Add all valid edges in a single operation
-        self._adj_list.update(valid_edges)
+                if node < 0:
+                    raise ValueError(f"Node index cannot be negative, got: {node}")
+
+        self._adj_list.update(edges)
+        self._nodes.update(itertools.chain.from_iterable(edges))
 
     @edge_index.deleter
     def edge_index(self):
@@ -241,8 +271,16 @@ class FeynmanGraph:
 
     def validate_edge_index(self):
         """
-        Validate the edges in the adjacency list.
+        Validates the edges in the adjacency list. Checks for proper edge format
+        and that edge indices are within valid bounds.
+
+        Raises:
+        - ValueError: If an edge is improperly formatted or out of bounds.
         """
+        if not self._nodes:
+            raise ValueError("No nodes in the graph to validate edges.")
+
+        max_node_index = max(self._nodes)
         for edge in self._adj_list:
             # Check if each edge is a tuple of two integers
             if not (
@@ -251,13 +289,12 @@ class FeynmanGraph:
                 and all(isinstance(n, int) for n in edge)
             ):
                 raise ValueError(f"Invalid edge format: {edge}")
+            # Check bounds
+            if any(node_index > max_node_index or node_index < 0 for node_index in edge):
+                raise ValueError(f"Edge {edge} is out of bounds. Max node index is {max_node_index} and can't be negative.")
+            
 
-            # Check edge bounds
-            last_node = max(self._nodes)
-            if edge[0] < 0 or edge[0] > last_node or edge[1] < 0 or edge[1] > last_node:
-                raise ValueError(f"Edge out of bounds: {edge}")
-
-    def undirected_edges(self):
+    def make_edges_undirected(self):
         """
         Make the graph undirected.
         """
@@ -297,18 +334,32 @@ class FeynmanGraph:
     @property
     def node_feat(self):
         """
-        Returns node features
+        Returns node features.
         """
         self.validate_node_feat()
-        return [self._node_feat_dict[str(i + 1)] for i in range(self.get_num_nodes())]
+        return [self._node_feat_dict[str(i)] for i in sorted(self._nodes)]
 
     @typechecked
     def add_node_feat(self, node_idx: str, feature):
         self._node_feat_dict[node_idx] = feature
 
     def validate_node_feat(self):
-        for i in range(self.get_num_nodes()):
-            assert self._node_feat_dict[str(i + 1)]
+        if not self._nodes:
+            raise ValueError("No nodes to validate features for.")
+
+        for node in self._nodes:
+            node_key = str(node)
+            if node_key not in self._node_feat_dict:
+                raise ValueError(f"Missing feature for node {node}")
+
+            feature = self._node_feat_dict[node_key]
+            if len(feature) != 3:
+                raise ValueError(f"Feature must be of length 3, but got {feature}")
+            # Add more specific checks depending on the expected feature format
+            if not isinstance(feature, list):
+                raise ValueError(
+                    f"Invalid feature type for node {node}: {type(feature)}"
+                )
 
     # !SECTION
 
@@ -320,11 +371,26 @@ class FeynmanGraph:
 
         FIXME - Currently uses a list repr of self.edge_index. Is the guaranteed to be the same ordered everytime?? We need to ensure that when we call self.edge_index and self.edge_feat that each edge feature corresponds to the correct edge in the adjacency list.
         """
-        self.validate_edge_feat()
-        return [self._edge_feat_dict[e] for e in self.edge_index]
+        # self.validate_edge_feat()
+        # return [self._edge_feat_dict[e] for e in self.edge_index]
+        return []
 
     def validate_edge_feat(self):
-        pass
+        if not self.edge_index:
+            raise ValueError("No edges to validate features for.")
+
+        for edge in self.edge_index:
+            if edge not in self._edge_feat_dict:
+                raise ValueError(f"Missing feature for edge {edge}")
+
+            feature = self._edge_feat_dict[edge]
+            if len(feature) != 12:
+                raise ValueError(f"Feature must be of length 12, but got {feature}")
+            # Validate the type of the edge feature
+            if not isinstance(feature, list):
+                raise ValueError(
+                    f"Invalid feature type for edge {edge}: {type(feature)}"
+                )
 
     # !SECTION
     # SECTION - Display methods
@@ -332,13 +398,20 @@ class FeynmanGraph:
         print(self.edge_index, self.node_feat, self.edge_feat)
         return (
             pd.DataFrame(self.edge_index),
-            pd.DataFrame(self.node_features),
+            pd.DataFrame(self.node_feat),
             pd.DataFrame(self.edge_feat),
         )
 
     def display_graph(self):
+
+        if not self._adj_list:
+            raise ValueError("Cannot display an empty graph.")
+
         G = nx.Graph()
         adj_dict = self.get_adj_dict()
+
+        if not adj_dict:
+            raise ValueError("Adjacency dictionary is empty, unable to construct the graph.")
 
         # Add nodes
         G.add_nodes_from(adj_dict.keys())
