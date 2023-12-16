@@ -1,0 +1,10 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+
+# Env stuff
+.ruff_cache/
+.vscode/
+*__pycache__/
+*.venv/
