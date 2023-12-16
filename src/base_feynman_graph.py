@@ -6,13 +6,12 @@
 
 ## Standard libraries
 import itertools
-
+import numpy as np
 from typing import Iterable
 
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
 import pandas as pd
 
 ## Imports for plotting
@@ -24,8 +23,6 @@ from typeguard import typechecked
 set_matplotlib_formats("svg", "pdf")  # For export
 matplotlib.rcParams["lines.linewidth"] = 2.0
 
-DATASETPATH = "./data"
-raw_filepath = f"{DATASETPATH}/raw"
 
 
 # # **Plan**
@@ -107,34 +104,6 @@ raw_filepath = f"{DATASETPATH}/raw"
 #
 # ---
 #
-# ### **Define constants**
-#
-# Always using natural units in MeV
-
-
-# lepton masses
-m_e = 0.5110
-m_mu = 105.6583755
-m_tau = 1776
-
-# quark masses
-m_up = 2.2
-m_down = 4.7
-m_charm = 1275
-m_strange = 95
-m_top = 172760
-m_bottom = 4180
-
-# massive bosons
-m_W = 80379
-m_Z = 91187
-m_H = 125100
-
-alpha_QED = 1 / 137
-alpha_S = 1
-alpha_W = 1e-6
-q_e = np.sqrt(4 * np.pi * alpha_QED)
-num_edge_feat = 9
 
 """---
 # **Creating Graph Representation Classes**
@@ -142,20 +111,6 @@ num_edge_feat = 9
 FeynmanGraph class has been taken from GitHub
 
 """
-
-
-def graph_combine(graph1, graph2):
-    graph2[1][0] = [
-        x + len(graph1[0]) - 1 for x in graph2[1][0]
-    ]  # The -1 is included because the nodes are numbered starting from 0
-    graph2[1][1] = [x + len(graph1[0]) - 1 for x in graph2[1][1]]
-
-    nodes = graph1[0] + graph2[0]
-    edge_index = [graph1[1][0] + graph2[1][0], graph1[1][1] + graph2[1][1]]
-    edge_feat = graph1[2] + graph2[2]
-
-    return [nodes, edge_index, edge_feat]
-
 
 class FeynmanGraph:
     """
@@ -179,7 +134,7 @@ class FeynmanGraph:
     - Need to change validations to accomodate the above change
     """
 
-    def __init__(self, edges: Iterable[tuple] = None):
+    def __init__(self):
         """
         Initializes the FeynmanGraph with an optional set of edges.
 
@@ -192,8 +147,6 @@ class FeynmanGraph:
         # confusingly the adj_list is stored as a set, but it is converted to a list when accessed
         self._adj_list = set()
         self._nodes = set()
-        if edges:
-            self.add_edges(edges)
 
     def M_fi(self):
         raise Exception("No M_fi function has been defined")
@@ -424,14 +377,53 @@ class FeynmanGraph:
                 )
 
     # !SECTION
-    # SECTION - Display methods
-    def build_dfs(self):
-        print(self.edge_index, self.node_feat, self.edge_feat)
-        return (
-            pd.DataFrame(self.edge_index),
-            pd.DataFrame(self.node_feat),
-            pd.DataFrame(self.edge_feat),
+    
+    def dataframe_builder(
+        theta_min,
+        ang_res,
+        p_res,
+        p_min,
+        p_max,
+        Mfi_squared,
+        graph,
+    ):
+        """
+        Function to build a dataframe
+        TODO - needs to accomodate the refactor
+        """
+        # Setup: First make the dataframe a long list of arrays. 20,000 data points
+        momenta_range = np.linspace(p_min, p_max, p_res)
+        dataframe = np.empty(shape=(ang_res * p_res, 6), dtype=object)
+
+        # Index to count the graph number
+        graph_count = 0
+
+        for p in momenta_range:
+            for theta in np.linspace(theta_min, np.pi, ang_res):
+                # Graph-level target
+                target = Mfi_squared(p, theta)
+
+                # Create the dataframe as an numpy array first. Need to add a way to handle empty graphs
+                dataframe[graph_count, 0] = graph[0]
+                dataframe[graph_count, 1] = graph[1]
+                dataframe[graph_count, 2] = graph[2]
+                dataframe[graph_count, 3] = target
+                dataframe[graph_count, 4] = p
+                dataframe[graph_count, 5] = theta
+
+                # increment the index
+                graph_count += 1
+
+        dataframe = pd.DataFrame(
+            dataframe,
+            columns=["x", "edge_index", "edge_attr", "y", "p", "theta"],
+            index=np.arange(0, dataframe.shape[0], 1),
         )
+        dataframe["y_scaler"] = dataframe["y"].max()
+        dataframe["p_scaler"] = dataframe["p"].max()
+        dataframe["y_norm"] = dataframe["y"] / dataframe["y"].max()
+        dataframe["p_norm"] = dataframe["p"] / dataframe["p"].max()
+        return dataframe
 
     def display_graph(self):
         if not self._adj_list:
