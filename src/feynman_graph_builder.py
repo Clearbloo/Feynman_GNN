@@ -1,10 +1,11 @@
 import math
-from typing import Iterable
-import numpy as np
 import os
-import pandas as pd
+from typing import Iterable
 
+import numpy as np
+import pandas as pd
 from base_feynman_graph import FeynmanGraph
+
 # TODO convert to registry
 from particles import (
     AntiTop_b,
@@ -18,7 +19,6 @@ from particles import (
     Top_r,
     Up_r,
 )
-
 
 DATASETPATH = "./data"
 raw_filepath = f"{DATASETPATH}/raw"
@@ -73,39 +73,55 @@ def graph_combine(graph1, graph2):
 # Need to think if i want these to be instances of the FeynmanGraph class or inherited from...
 # Also need the specific diagrams to be either an instance or inherited from a classs
 
+
 class S_Channel(FeynmanGraph):
     def __init__(self):
         super().__init__()
         # Add edges
-        edges = [(1,3),(2,3),(3,4),(4,5),(4,6)]
+        edges = [(1, 3), (2, 3), (3, 4), (4, 5), (4, 6)]
         self.add_edges(edges)
-        
+
         # TODO - add edge and node features. Adding in placeholder for now
         initial = [1, 0, 0]
         virtual = [0, 1, 0]
         final = [0, 0, 1]
         # Bad idea to have the global node with a different context to the 1-hot
-        # encodings of the individual nodes
-        global_node = [alpha_QED, alpha_W, alpha_S]
-        
-        self.node_feat = [initial, virtual, final, global_node]
+        # encodings of the individual nodes. Commenting out for now
+        # global_node = [alpha_QED, alpha_W, alpha_S]
+
+        self.node_feat = {
+            1: initial,
+            2: initial,
+            3: virtual,
+            4: virtual,
+            5: final,
+            6: final,
+        }
+
+
+s = S_Channel()
+print(s.edge_index, s.edge_feat, s.node_feat)
+
+
 class T_Channel(FeynmanGraph):
     def __init__(self):
         super().__init__()
         # Add edges
-        edges = [(1,2),(2,3),(2,5),(4,5),(5,6)]
+        edges = [(1, 2), (2, 3), (2, 5), (4, 5), (5, 6)]
         self.add_edges(edges)
 
         # TODO - add edge and node features
+
 
 class U_Channel(FeynmanGraph):
     def __init__(self):
         super().__init__()
         # Add edges
-        edges = [(1,2),(2,6),(2,5),(4,5),(5,3)]
+        edges = [(1, 2), (2, 6), (2, 5), (4, 5), (5, 3)]
         self.add_edges(edges)
 
         # TODO - add edge and node features
+
 
 # ## Feynman Diagram builder
 #
@@ -304,7 +320,6 @@ def diagram_builder_gluon(
     return graphs[0]
 
 
-
 # def main():
 
 #     # write the matrix element as a function
@@ -479,7 +494,9 @@ def diagram_builder_gluon(
 
 
 if __name__ == "__main__":
+
     def place_holder():
         return 0
+
     place_holder()
     # main()
