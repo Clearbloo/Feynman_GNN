@@ -8,6 +8,7 @@
 import itertools
 import numpy as np
 from typing import Iterable
+import warnings
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,7 +21,6 @@ from IPython.display import set_matplotlib_formats
 
 set_matplotlib_formats("svg", "pdf")  # For export
 matplotlib.rcParams["lines.linewidth"] = 2.0
-
 
 
 # # **Plan**
@@ -110,6 +110,7 @@ FeynmanGraph class has been taken from GitHub
 
 """
 
+
 class FeynmanGraph:
     """
     Represents a directed graph using an adjacency list, with support for dynamic
@@ -146,7 +147,7 @@ class FeynmanGraph:
         self._adj_list = set()
         self._nodes = set()
 
-    def M_fi(self):
+    def Mfi_squared(self, p, theta):
         raise Exception("No M_fi function has been defined")
 
     def get_num_nodes(self) -> int:
@@ -180,6 +181,10 @@ class FeynmanGraph:
         self.add_edges(edges)
         self.validate_edge_index()
 
+    @edge_index.deleter
+    def edge_index(self):
+        del self._adj_list
+
     def add_edges(self, edges: Iterable[tuple[int, int]] | tuple[int, int]):
         """
         Adds multiple edges to the graph. Each edge is a tuple of two integers.
@@ -209,15 +214,15 @@ class FeynmanGraph:
         self._nodes.update(itertools.chain.from_iterable(edges))
 
         # Initialize node feature if it doesn't exist already
-        for e in edges:
-            if e not in self._node_feat_dict:
-                self._node_feat_dict[e] = []
+        for edge in edges:
+            for node in edge:
+                if node not in self._node_feat_dict:
+                    self.add_node_feat(node, [])
 
         # Initialize edge feature if it doesn't exist already
-
-    @edge_index.deleter
-    def edge_index(self):
-        del self._adj_list
+        for edge in edges:
+            if edge not in self._edge_feat_dict:
+                self.add_edge_feat(edge, [])
 
     def validate_edge_index(self):
         """
@@ -290,32 +295,35 @@ class FeynmanGraph:
         Returns node features.
         """
         # self.validate_node_feat()
-        return [self._node_feat_dict[str(i)] for i in sorted(self._nodes)]
+        return [self._node_feat_dict[i] for i in sorted(self._nodes)]
 
     @node_feat.setter
-    def node_feat(self, nodes, feats):
-        """set node features"""
+    def node_feat(self, feats: dict):
+        """set node features, assumes given correctly and in order"""
         # Check nodes and feats are same size
-        for n, f in nodes, feats:
-            self.add_node_feat(n, f)
+        for node in feats:
+            if int(node) not in self._nodes:
+                raise ValueError("Node not initialized")
+
+        self._node_feat_dict = feats
+        self.validate_node_feat()
 
     @node_feat.deleter
     def node_feat(self):
         del self._node_feat_dict
 
-    def add_node_feat(self, node_idx: str, feature: list):
-        self._node_feat_dict[node_idx] = feature
+    def add_node_feat(self, node: int, feature: list):
+        self._node_feat_dict[node] = feature
 
     def validate_node_feat(self):
         if not self._nodes:
             raise ValueError("No nodes to validate features for.")
 
         for node in self._nodes:
-            node_key = str(node)
-            if node_key not in self._node_feat_dict:
+            if node not in self._node_feat_dict:
                 raise ValueError(f"Missing feature for node {node}")
 
-            feature = self._node_feat_dict[node_key]
+            feature = self._node_feat_dict[node]
             if len(feature) != 3:
                 raise ValueError(f"Feature must be of length 3, but got {feature}")
             # Add more specific checks depending on the expected feature format
@@ -333,9 +341,10 @@ class FeynmanGraph:
         return edge features
 
         FIXME - Currently uses a list repr of self.edge_index. Is the guaranteed to be the same ordered everytime?? We need to ensure that when we call self.edge_index and self.edge_feat that each edge feature corresponds to the correct edge in the adjacency list.
+        Can maybe fix this by calling sorted() on sets
         """
-        # self.validate_edge_feat()
-        # return [self._edge_feat_dict[e] for e in self.edge_index]
+        self.validate_edge_feat()
+        return [self._edge_feat_dict[e] for e in self.edge_index]
         return []
 
     @edge_feat.setter
@@ -353,7 +362,7 @@ class FeynmanGraph:
         """
         TODO - docstring
         """
-        self._edge_feat_dict[str(edge)] = feat
+        self._edge_feat_dict[edge] = feat
 
     def validate_edge_feat(self):
         if not self.edge_index:
@@ -365,7 +374,10 @@ class FeynmanGraph:
 
             feature = self._edge_feat_dict[edge]
             if len(feature) != 12:
-                raise ValueError(f"Feature must be of length 12, but got {feature}")
+                if feature == []:
+                    warnings.warn(f"Edge feature not defined for edge: {edge}")
+                else:
+                    raise ValueError(f"Feature must be of length 12, but got {feature}")
             # Validate the type of the edge feature
             if not isinstance(feature, list):
                 raise ValueError(
@@ -373,55 +385,48 @@ class FeynmanGraph:
                 )
 
     # !SECTION
-    
-    def build_dfs(
-        theta_min,
-        ang_res,
-        p_res,
-        p_min,
-        p_max,
-        Mfi_squared,
-        graph,
-    ):
+
+    def build_df(
+        self, theta_min=0, ang_res=100, p_min=0, p_max=1e9, p_res=100
+    ) -> pd.DataFrame:
         """
         Function to build a dataframe
-        TODO - needs to accomodate the refactor
         """
-        # Setup: First make the dataframe a long list of arrays. 20,000 data points
-        momenta_range = np.linspace(p_min, p_max, p_res)
-        dataframe = np.empty(shape=(ang_res * p_res, 6), dtype=object)
+        # Vectorized setup
+        p_values = np.linspace(p_min, p_max, p_res)
+        theta_values = np.linspace(theta_min, np.pi, ang_res)
+        p_grid, theta_grid = np.meshgrid(p_values, theta_values, indexing="ij")
+        target_grid = self.Mfi_squared(p_grid, theta_grid)
 
-        # Index to count the graph number
-        graph_count = 0
+        # Flatten the grids
+        flat_p = p_grid.flatten()
+        flat_theta = theta_grid.flatten()
+        flat_target = target_grid.flatten()
 
-        for p in momenta_range:
-            for theta in np.linspace(theta_min, np.pi, ang_res):
-                # Graph-level target
-                target = Mfi_squared(p, theta)
+        # Prepare data for DataFrame
+        data = {
+            "x": [self.node_feat] * len(flat_p),
+            "edge_index": [self.edge_index] * len(flat_p),
+            "edge_attr": [self.edge_feat] * len(flat_p),
+            "y": flat_target,
+            "p": flat_p,
+            "theta": flat_theta,
+        }
 
-                # Create the dataframe as an numpy array first. Need to add a way to handle empty graphs
-                dataframe[graph_count, 0] = graph[0]
-                dataframe[graph_count, 1] = graph[1]
-                dataframe[graph_count, 2] = graph[2]
-                dataframe[graph_count, 3] = target
-                dataframe[graph_count, 4] = p
-                dataframe[graph_count, 5] = theta
+        # Create DataFrame
+        dataframe = pd.DataFrame(data)
 
-                # increment the index
-                graph_count += 1
-
-        dataframe = pd.DataFrame(
-            dataframe,
-            columns=["x", "edge_index", "edge_attr", "y", "p", "theta"],
-            index=np.arange(0, dataframe.shape[0], 1),
-        )
-        dataframe["y_scaler"] = dataframe["y"].max()
-        dataframe["p_scaler"] = dataframe["p"].max()
-        dataframe["y_norm"] = dataframe["y"] / dataframe["y"].max()
-        dataframe["p_norm"] = dataframe["p"] / dataframe["p"].max()
+        self.dataframe = dataframe
         return dataframe
 
-    def display_graph(self):
+    def normalize_df(self):
+        self.dataframe["y_max"] = self.dataframe["y"].max()
+        self.dataframe["p_max"] = self.dataframe["p"].max()
+        self.dataframe["y_norm"] = self.dataframe["y"] / self.dataframe["y"].max()
+        self.dataframe["p_norm"] = self.dataframe["p"] / self.dataframe["p"].max()
+        return self.dataframe
+
+    def create_graph_display(self, display: bool = False):
         if not self._adj_list:
             raise ValueError("Cannot display an empty graph.")
 
@@ -433,19 +438,23 @@ class FeynmanGraph:
                 "Adjacency dictionary is empty, unable to construct the graph."
             )
 
-        # Add nodes
+        # Add nodes and edges
         G.add_nodes_from(adj_dict.keys())
+        G.add_edges_from(
+            (node, neighbor)
+            for node, neighbors in adj_dict.items()
+            for neighbor in neighbors
+        )
 
-        # Add edges
-        for node, neighbors in adj_dict.items():
-            for neighbor in neighbors:
-                G.add_edge(node, neighbor)
+        # Create a Matplotlib figure and store it as an attribute
+        self.figure, ax = plt.subplots()
 
-        # Draw the graph
+        # Draw the graph using the 'ax' object
         pos = nx.spring_layout(G, seed=42)
         nx.draw(
             G,
             pos,
+            ax=ax,
             with_labels=True,
             node_size=500,
             node_color="skyblue",
@@ -454,5 +463,15 @@ class FeynmanGraph:
             font_weight="bold",
         )
 
-        plt.title("Graph Visualization")
-        plt.show()
+        ax.set_title("Graph Visualization")
+
+        if display:
+            plt.show()
+
+    def display_graph(self):
+        if hasattr(self, "figure"):
+            self.figure.canvas.manager.window.update()
+            self.figure.show()
+
+    def close_display(self):
+        plt.close()
