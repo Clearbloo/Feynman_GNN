@@ -1,23 +1,10 @@
-import math
-import os
-from typing import Iterable
-
 import numpy as np
-import pandas as pd
 from base_feynman_graph import FeynmanGraph
 
 # TODO convert to registry
 from particles import (
-    AntiTop_b,
-    AntiUp_b,
-    E_minus,
-    E_plus,
     Gluon_rbbar,
-    Mu_minus,
-    Mu_plus,
     Photon,
-    Top_r,
-    Up_r,
 )
 
 DATASETPATH = "./data"
