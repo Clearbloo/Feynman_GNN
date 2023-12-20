@@ -16,8 +16,7 @@ import networkx as nx
 import pandas as pd
 
 ## Imports for plotting
-from IPython.display import set_matplotlib_formats
-
+from matplotlib_inline.backend_inline import set_matplotlib_formats
 
 set_matplotlib_formats("svg", "pdf")  # For export
 matplotlib.rcParams["lines.linewidth"] = 2.0

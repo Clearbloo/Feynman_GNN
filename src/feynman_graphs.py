@@ -1,42 +1,10 @@
-import numpy as np
 from base_feynman_graph import FeynmanGraph
 
-# TODO convert to registry
-from particles import (
-    Gluon_rbbar,
-    Photon,
-)
+# import constants
+from particles import ParticleRegistry
 
 DATASETPATH = "./data"
 raw_filepath = f"{DATASETPATH}/raw"
-
-### **Define constants**
-# Always using natural units in MeV
-
-
-# lepton masses
-m_e = 0.5110
-m_mu = 105.6583755
-m_tau = 1776
-
-# quark masses
-m_up = 2.2
-m_down = 4.7
-m_charm = 1275
-m_strange = 95
-m_top = 172760
-m_bottom = 4180
-
-# massive bosons
-m_W = 80379
-m_Z = 91187
-m_H = 125100
-
-alpha_QED = 1 / 137
-alpha_S = 1
-alpha_W = 1e-6
-q_e = np.sqrt(4 * np.pi * alpha_QED)
-num_edge_feat = 9
 
 
 def graph_combine(graph1, graph2):
@@ -84,10 +52,6 @@ class S_Channel(FeynmanGraph):
             5: final,
             6: final,
         }
-
-
-s = S_Channel()
-print(s.edge_index, s.edge_feat, s.node_feat)
 
 
 class T_Channel(FeynmanGraph):
@@ -139,7 +103,6 @@ class U_Channel(FeynmanGraph):
 def vertex_check(vertex, edge_feat, edge_index):
     """
     Function that returns a true or false based on whether quantities are conserved at the specified vertex
-    # TODO add this to the base class
     """
     # incoming indices since edge_index[1] are the destinations
     inc_indices = [k for k, x in enumerate(edge_index[1]) if x == vertex]
@@ -203,7 +166,7 @@ def diagram_builder(
             edge_index[1][i]
         ] == [0, 1, 0]:  # 1-hot encoding for virtual nodes
             # cycle through list of bosons (just photons for now)
-            edge_feat[i] = Photon().get_feat()
+            edge_feat[i] = ParticleRegistry.get_particle_class("photon").get_feat()
             if vertex_check(edge_index[0][i], edge_feat, edge_index):
                 propagators.append(edge_feat[i])
                 edge_position.append(i)
@@ -274,7 +237,7 @@ def diagram_builder_gluon(
             edge_index[1][i]
         ] == [0, 1, 0]:  # 1-hot encoding for virtual nodes
             # cycle through list of bosons (just photons for now)
-            edge_feat[i] = Gluon_rbbar().get_feat()
+            edge_feat[i] = ParticleRegistry.get_particle_class("gluon_rbbar").get_feat()
             if vertex_check(edge_index[0][i], edge_feat, edge_index):
                 propagators.append(edge_feat[i])
                 edge_position.append(i)
