@@ -79,18 +79,3 @@ torch==2.1.0 -f https://download.pytorch.org/whl/cpu
 torchaudio==2.1.0 -f https://download.pytorch.org/whl/cpu
 torchvision==0.16.0 -f https://download.pytorch.org/whl/cpu
 torchmetrics==1.2.0
-torch_geometric==2.4.0
-torch-cluster==1.6.3 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-torch-scatter==2.1.2 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-torch-sparse==0.6.18 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-torch-spline-conv==1.2.2 -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
-tornado==6.3.3
-tqdm==4.66.1
-traitlets==5.13.0
-typing_extensions==4.4.0
-tzdata==2023.3
-urllib3==2.0.7
-wcwidth==0.2.9
-Werkzeug==3.0.1
-widgetsnbextension==4.0.9
-yarl==1.9.2
