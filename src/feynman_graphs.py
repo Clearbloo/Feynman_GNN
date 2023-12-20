@@ -246,9 +246,9 @@ def diagram_builder_gluon(
 
     # cycle through edge_position
     """
-  look at edge positions, take all the indices in edge positions
-  make lists for each 
-  """
+    look at edge positions, take all the indices in edge positions
+    make lists for each 
+    """
 
     # Connect the global node and make the graph undirected
     if global_connect is True:
