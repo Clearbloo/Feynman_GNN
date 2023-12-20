@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List, Type
 
 # lepton masses
 m_e = 0.5110
@@ -26,60 +27,97 @@ num_edge_feat = 9
 
 
 class ParticleRegistry:
-    """TODO Might make one of these to access every particle"""
+    """
+    Access all particles
+    """
 
-    pass
+    _registry = {}
+
+    @classmethod
+    def register_particle(cls, particle_class: Type["Particle"]):
+        cls._registry[particle_class.__name__.lower()] = particle_class
+
+    @classmethod
+    def get_particle_class(cls, name: str):
+        return cls._registry.get(name.lower())
+
+    @classmethod
+    def list_particles(cls) -> List[str]:
+        return list(cls._registry.keys())
 
 
 class Particle:
     """
     edge features vector
     l=[m,S,LIW3,LY,RIW3,RY,colour,h]
-    masses in subsequent classes are given in MeV
+
+    Represents a particle with various properties.
+    Masses are given in MeV.
     """
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        ParticleRegistry.register_particle(cls)
 
     def __init__(
         self,
-        m: float,
-        S: float,
-        LIW: float,
-        LY: float,
-        RIW: float,
-        RY: float,
-        colour: list = [0, 0, 0],
-        anti_colour: list = [0, 0, 0],
+        mass: float,
+        spin: float,
+        left_weak_isospin: float,
+        left_hypercharge: float,
+        right_weak_isospin: float,
+        right_hypercharge: float,
+        colour: List[int] = [0, 0, 0],
+        anti_colour: List[int] = [0, 0, 0],
     ):
-        self.LIW = LIW
-        self.LY = LY
-        self.RIW = RIW
-        self.RY = RY
+        self.validate_colour(colour)
+        self.validate_colour(anti_colour)
 
-        self.feat = [
-            m,
-            S,
-            LIW,
-            LY,
-            RIW,
-            RY,
-            colour[0],
-            colour[1],
-            colour[2],
-            anti_colour[0],
-            anti_colour[1],
-            anti_colour[2],
+        self.mass = mass
+        self.spin = spin
+        self.left_weak_isospin = left_weak_isospin
+        self.left_hypercharge = left_hypercharge
+        self.right_weak_isospin = right_weak_isospin
+        self.right_hypercharge = right_hypercharge
+        self.colour = colour
+        self.anti_colour = anti_colour
+
+        self.features = [
+            mass,
+            spin,
+            left_weak_isospin,
+            left_hypercharge,
+            right_weak_isospin,
+            right_hypercharge,
+            *colour,
+            *anti_colour,
         ]
 
-    def get_feat(self):
-        return self.feat
+    @property
+    def id(self) -> str:
+        return self.__class__.__name__.lower()
+
+    def validate_colour(self, colour):
+        if len(colour) != 3 or not all(isinstance(c, int) for c in colour):
+            raise ValueError("Colour must be a list of three integers.")
+
+    def get_features(self):
+        return self.features
 
     def anti_particle(self):
-        self.feat[2] = -self.RIW
-        self.feat[3] = -self.RY
-        self.feat[4] = -self.LIW
-        self.feat[5] = -self.LY
+        self.features[2], self.features[4] = -self.features[4], -self.features[2]
+        self.features[3], self.features[5] = -self.features[5], -self.features[3]
 
-    def print_feat(self):
-        print(self.feat)
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(mass={self.mass}, spin={self.spin}, "
+            f"left_weak_isospin={self.left_weak_isospin}, left_hypercharge={self.left_hypercharge}, "
+            f"right_weak_isospin={self.right_weak_isospin}, right_hypercharge={self.right_hypercharge}, "
+            f"colour={self.colour}, anti_colour={self.anti_colour})"
+        )
+
+    def print_features(self):
+        print(self.features)
 
 
 ## ANCHOR Lepton classes:
@@ -325,7 +363,3 @@ class Higgs(Particle):
 
     def __init__(self):
         Particle.__init__(self, m=m_H, S=0, LIW=-0.5, LY=1, RIW=0, RY=0)
-
-
-test_particle = Mu_plus()
-test_particle.print_feat()
