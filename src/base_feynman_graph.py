@@ -516,7 +516,18 @@ class GraphVisualizer:
         self.figure = None
 
     def create_graph_display(self, display: bool = False):
-        adj_dict = self.graph.get_adj_dict()
+        """
+        Method to create a graph display
+
+        Parameters
+        ---
+        display (False): choose whether to show graph
+        """
+        if not self._adj_list:
+            raise ValueError("Cannot display an empty graph.")
+
+        G = nx.Graph()
+        adj_dict = self.get_adj_dict()
 
         if not adj_dict:
             raise GraphConstructionError(
