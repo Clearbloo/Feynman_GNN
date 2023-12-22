@@ -62,7 +62,11 @@ class T_Channel(FeynmanGraph):
         self.add_edges(edges)
 
         # TODO - add edge and node features
+        initial = [1, 0, 0]
+        virtual = [0, 1, 0]
+        final = [0, 0, 1]
 
+        print(initial, virtual, final)
 
 class U_Channel(FeynmanGraph):
     def __init__(self):
