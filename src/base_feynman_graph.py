@@ -176,7 +176,8 @@ class FeynmanGraph:
     @edge_index.setter
     def edge_index(self, edges: Iterable[tuple[int, int]]):
         """set additional edge index. Maybe should delete first?"""
-        # del self.edge_index
+        del self.edge_index
+        self._adj_list = set()
         self.add_edges(edges)
         self.validate_edge_index()
 
@@ -221,7 +222,7 @@ class FeynmanGraph:
         # Initialize edge feature if it doesn't exist already
         for edge in edges:
             if edge not in self._edge_feat_dict:
-                self.add_edge_feat(edge, [])
+                self.add_edge_feat({edge: []})
 
     def validate_edge_index(self):
         """
@@ -263,6 +264,9 @@ class FeynmanGraph:
         # Update the adjacency list with reverse edges
         self.add_edges(reverse_edges)
 
+        # Update the edge features
+        self.add_edge_feat({e: self._edge_feat_dict[e] for e in reverse_edges})
+
     def connect_global_node(self):
         """Connect a global node to all other nodes"""
         # Create edges from the global node to all other nodes
@@ -291,7 +295,7 @@ class FeynmanGraph:
     @property
     def node_feat(self):
         """
-        Returns node features.
+        Returns node features as a list
         """
         # self.validate_node_feat()
         return [self._node_feat_dict[i] for i in sorted(self._nodes)]
@@ -340,28 +344,27 @@ class FeynmanGraph:
         return edge features
 
         FIXME - Currently uses a list repr of self.edge_index. Is the guaranteed to be the same ordered everytime?? We need to ensure that when we call self.edge_index and self.edge_feat that each edge feature corresponds to the correct edge in the adjacency list.
-        Can maybe fix this by calling sorted() on sets
+        Current fix is by calling sorted() on sets
+        Alternatively could use a dict
         """
         self.validate_edge_feat()
         return [self._edge_feat_dict[e] for e in self.edge_index]
-        return []
 
     @edge_feat.setter
-    def edge_feat(self, edges, feats):
-        # TODO - Run checks
-        for edge, feat in edges, feats:
-            breakpoint()
-            self.add_edge_feat(edge, feat)
+    def edge_feat(self, edge_feats: dict):
+        del self.edge_feat
+        self._edge_feat_dict = dict()
+        self.add_edge_feat(edge_feats)
 
     @edge_feat.deleter
     def edge_feat(self):
         del self._edge_feat_dict
 
-    def add_edge_feat(self, edge: tuple[int, int], feat):
+    def add_edge_feat(self, edge_feats: dict[tuple[int,int]: list]):
         """
         TODO - docstring
         """
-        self._edge_feat_dict[edge] = feat
+        self._edge_feat_dict.update(edge_feats)
 
     def validate_edge_feat(self):
         if not self.edge_index:

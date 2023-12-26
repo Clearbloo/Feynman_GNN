@@ -1,5 +1,6 @@
 from base_feynman_graph import FeynmanGraph
-
+from typing import List
+from pandas import DataFrame
 # import constants
 from particles import ParticleRegistry
 
@@ -36,7 +37,6 @@ class S_Channel(FeynmanGraph):
         edges = [(1, 3), (2, 3), (3, 4), (4, 5), (4, 6)]
         self.add_edges(edges)
 
-        # TODO - add edge and node features. Adding in placeholder for now
         initial = [1, 0, 0]
         virtual = [0, 1, 0]
         final = [0, 0, 1]
@@ -61,10 +61,18 @@ class T_Channel(FeynmanGraph):
         edges = [(1, 2), (2, 3), (2, 5), (4, 5), (5, 6)]
         self.add_edges(edges)
 
-        # TODO - add edge and node features
         initial = [1, 0, 0]
         virtual = [0, 1, 0]
         final = [0, 0, 1]
+
+        self.node_feat = {
+            1: initial,
+            2: virtual,
+            3: final,
+            4: initial,
+            5: virtual,
+            6: final,
+        }
 
         print(initial, virtual, final)
 
@@ -75,7 +83,21 @@ class U_Channel(FeynmanGraph):
         edges = [(1, 2), (2, 6), (2, 5), (4, 5), (5, 3)]
         self.add_edges(edges)
 
-        # TODO - add edge and node features
+        initial = [1, 0, 0]
+        virtual = [0, 1, 0]
+        final = [0, 0, 1]
+        # Bad idea to have the global node with a different context to the 1-hot
+        # encodings of the individual nodes. Commenting out for now
+        # global_node = [alpha_QED, alpha_W, alpha_S]
+
+        self.node_feat = {
+            1: initial,
+            2: virtual,
+            3: final,
+            4: initial,
+            5: virtual,
+            6: final,
+        }
 
 
 # ## Feynman Diagram builder
@@ -132,50 +154,47 @@ def vertex_check(vertex, edge_feat, edge_index):
     return all(float(charge) == 0.0 for charge in conservation)
 
 
-def diagram_builder(
-    initial_0, initial_1, final_4, final_5, channel, global_connect: bool
-):
+def build_tree_diagrams(
+    initial_1,
+    initial_2,
+    final_5,
+    final_6,
+    channel: FeynmanGraph,
+    global_connect: bool,
+)-> List[DataFrame]:
     """
-    Function to make return all possbile diagrams with initial and final states given
+    Function to make return all possbile diagrams with given initial and final states.
+
+    Behaviour
+    ---
+    Creates the graph base, by assigning the edge features.
+    Cycles through possible propagators and checks if valid
+    Returns list of all allowed ones
+
+    Returns
+    ---
     Returns a list allowed graphs, which consist of Feyn_vertex, edge_index and edge_feat
     Changes: should allow feynman diagrams with False to be returned but force them to have matrix element 0; exclude certain vertices e.g. connecting electron to muon
     """
-    Feyn_vertex, adj_class = channel
-    num_edges = adj_class.graph_size()
-    edge_index = adj_class.get_list()
-    # check to see if process is kinematically allowed by conserving energy, helicity and momentum (need to add)
 
-    # Given edge features
-    incoming_0 = initial_0.get_feat()
-    incoming_1 = initial_1.get_feat()
-    outgoing_4 = final_4.get_feat()
-    outgoing_5 = final_5.get_feat()
+    graph: FeynmanGraph = channel()
 
-    # make empty edge feature list for directed graph
-    edge_feat = [0] * num_edges
-
-    # assign initial and final edge feats. NEED TO CHANGE THIS TO SEARCH FOR INIT AND FINAL NODES AS THE INDICES
-    edge_feat[0] = incoming_0
-    edge_feat[1] = incoming_1
-    edge_feat[-2] = outgoing_4
-    edge_feat[-1] = outgoing_5
+    # TODO - check to see if process is kinematically allowed by conserving energy, helicity and momentum (need to add)
+    edge_feats = {
+        1: initial_1,
+        2: initial_2,
+        5: final_5,
+        6: final_6,
+    }
+    graph.add_edge_feat(edge_feats)
 
     # create a list of allowed edges to insert between virtual nodes
     graphs = []
-    propagators = []
-    edge_position = []
-    for i in range(len(edge_index[0])):  # len(edge_index[0] is the number of edges)
-        # look for virtual nodes connected to virtual nodes
-        if Feyn_vertex[edge_index[0][i]] == [0, 1, 0] and Feyn_vertex[
-            edge_index[1][i]
-        ] == [0, 1, 0]:  # 1-hot encoding for virtual nodes
-            # cycle through list of bosons (just photons for now)
-            edge_feat[i] = ParticleRegistry.get_particle_class("photon").get_feat()
-            if vertex_check(edge_index[0][i], edge_feat, edge_index):
-                propagators.append(edge_feat[i])
-                edge_position.append(i)
-            if not propagators:  # checks to see if the list is empty
-                return []
+
+    # look for virtual nodes connected to virtual nodes
+    for e in graph.edge_index:
+        if e[0] == [0,1,0] and e[1] == [0,1,0]:
+            graph.edge_feat[e] = ParticleRegistry.get_particle_class("photon")
 
     # cycle through edge_position
     """
@@ -185,27 +204,24 @@ def diagram_builder(
 
     # Connect the global node and make the graph undirected
     if global_connect is True:
-        adj_class.connect_global_node()
+        graph.connect_global_node()
 
-        # add global node edge features
-        num_nodes = len(Feyn_vertex)  # including super node
-        for i in range(1, num_nodes):
-            global_edge_features = [0] * len(edge_feat[0])
-            edge_feat.append(global_edge_features)
-
-    adj_class.undirected()
-    edge_index = adj_class.get_list()
+    graph.make_edges_undirected()
 
     # make the features undirected
-    edge_feat += edge_feat
-    graphs.append([Feyn_vertex, edge_index, edge_feat])
+    graphs.append(graph)
 
-    return graphs[0]
+    return graphs
 
 
 def diagram_builder_gluon(
-    initial_0, initial_1, final_4, final_5, channel, global_connect: bool
-):
+    initial_0,
+    initial_1,
+    final_4,
+    final_5,
+    channel,
+    global_connect: bool,
+) -> List[DataFrame]:
     """
     Function to make return all possbile diagrams with initial and final states given
     Returns a list allowed graphs, which consist of Feyn_vertex, edge_index and edge_feat
@@ -272,185 +288,3 @@ def diagram_builder_gluon(
     graphs.append([Feyn_vertex, edge_index, edge_feat])
 
     return graphs[0]
-
-
-# def main():
-
-#     # write the matrix element as a function
-#     def Mfi_squared(p, theta):
-#         return (
-#             (q_e**2 * (1 + np.cos(theta))) ** 2 + (q_e**2 * (1 - np.cos(theta))) ** 2
-#         ) / 2
-
-#     graph = diagram_builder(
-#         E_minus(), E_plus(), Mu_minus(), Mu_plus(), s_channel(), True
-#     )
-#     df_e_annih = dataframe_builder(
-#         0,
-#         ang_res=100,
-#         p_res=100,
-#         p_min=10**3,
-#         p_max=10**6,
-#         Mfi_squared=Mfi_squared,
-#         graph=graph,
-#     )
-
-#     # save the file
-#     df_e_annih_mu = df_e_annih
-#     os.makedirs(raw_filepath, exist_ok=True)
-#     df_e_annih_mu.to_csv(path_or_buf=f"{raw_filepath}/QED_data_e_annih_mu.csv")
-
-#     df_e_annih_mu.plot("theta", "y", kind="scatter")
-
-#     # ## **Extending the dataset**
-#     #
-#     # Repeating for
-#     # $$e^-e^+\to e^-e^+$$
-#     #
-#     # This requires the inclusion of the t-channel diagrams
-
-#     def Mfi_squared(p, theta):
-#         """
-#         s = p_1^2 + p_2^2 + 2p_1p_2
-#         t = p_1^2 + p_3^2 - 2p_1p_3
-#         """
-#         s = 4 * (m_e**2 + p**2)
-#         t = 2 * m_e**2 - 2 * p**2 * (1 - math.cos(theta))
-#         u = 2 * m_e**2 - 2 * p**2 * (1 + math.cos(theta))
-#         return (
-#             2
-#             * q_e**4
-#             * ((u**2 + t**2) / s**2 + (u**2 + s**2) / t**2 + 2 * u**2 / (s * t))
-#         )  # 8*(q_e**4)*(s**4+t**4+u**4)/(4*s**2*t**2)
-
-#     graph_t = diagram_builder(
-#         E_minus(), E_plus(), E_minus(), E_plus(), t_channel(), True
-#     )
-#     graph_s = diagram_builder(
-#         E_minus(), E_plus(), E_minus(), E_plus(), s_channel(), True
-#     )
-#     graph = graph_combine(graph_s, graph_t)
-#     df = dataframe_builder(
-#         0.5,
-#         ang_res=400,
-#         p_res=100,
-#         p_min=10**3,
-#         p_max=10**6,
-#         Mfi_squared=Mfi_squared,
-#         graph=graph,
-#     )
-#     df_e_annih_e = df
-#     df_e_annih = pd.concat([df_e_annih, df], ignore_index=True)
-#     df_merge = df_e_annih
-
-#     # save the file
-#     os.makedirs(raw_filepath, exist_ok=True)
-#     df_e_annih_e.to_csv(path_or_buf=raw_filepath + "/QED_data_e_annih_e.csv")
-#     df_e_annih.to_csv(path_or_buf=raw_filepath + "/QED_data_e_annih.csv")
-
-#     """Other combinations"""
-
-#     def Mfi_squared(p, theta):
-#         return (
-#             (q_e**2 * (1 + np.cos(theta))) ** 2 + (q_e**2 * (1 - np.cos(theta))) ** 2
-#         ) / 2
-
-#     graph = diagram_builder(
-#         Mu_minus(), Mu_plus(), E_minus(), E_plus(), s_channel(), True
-#     )
-#     df = dataframe_builder(
-#         0,
-#         ang_res=100,
-#         p_res=100,
-#         p_min=0,
-#         p_max=10**6,
-#         Mfi_squared=Mfi_squared,
-#         graph=graph,
-#     )
-#     df_annih = df_e_annih
-#     df_annih = pd.concat([df_annih, df], ignore_index=True)
-
-#     graph = diagram_builder(
-#         Mu_minus(), Mu_plus(), Mu_minus(), Mu_plus(), s_channel(), True
-#     )
-#     df = dataframe_builder(
-#         0,
-#         ang_res=100,
-#         p_res=100,
-#         p_min=10**3,
-#         p_max=10**6,
-#         Mfi_squared=Mfi_squared,
-#         graph=graph,
-#     )
-#     df_annih = pd.concat([df_annih, df], ignore_index=True)
-
-#     # save the file
-#     os.makedirs(raw_filepath, exist_ok=True)
-#     df_annih.to_csv(path_or_buf=raw_filepath + "/QED_data_annih.csv")
-
-#     df_annih.plot("theta", "y_norm", kind="scatter")
-
-#     # ## QCD
-
-#     def Mfi_squared(p, theta):
-#         """
-#         s = p_1^2 + p_2^2 + 2p_1p_2
-#         t = p_1^2 + p_3^2 - 2p_1p_3
-#         """
-#         if p <= m_top:
-#             return 0
-#         s = 4 * p**2
-#         t = m_top**2 - 2 * p**2 + 2 * p * math.cos(theta) * math.sqrt(p**2 - m_top**2)
-#         u = m_top**2 - 2 * p**2 - 2 * p * math.cos(theta) * math.sqrt(p**2 - m_top**2)
-#         return (
-#             16 * alpha_S**4 * (t**4 + u**4 + 2 * m_top**2 * (2 * s - m_top**2)) / (s**2)
-#         )
-
-#     graph = diagram_builder_gluon(
-#         Up_r(), AntiUp_b(), Top_r(), AntiTop_b(), s_channel(), True
-#     )
-#     df = dataframe_builder(
-#         0,
-#         ang_res=1000,
-#         p_res=10,
-#         p_min=m_top * 0.9,
-#         p_max=m_top * 2,
-#         Mfi_squared=Mfi_squared,
-#         graph=graph,
-#     )
-#     df_QCD = df
-
-#     # save the file
-#     os.makedirs(raw_filepath, exist_ok=True)
-#     df_QCD.to_csv(path_or_buf=raw_filepath + "/QCD_data.csv")
-
-#     df_all = pd.concat([df_merge, df_QCD], ignore_index=True)
-#     df_all.to_csv(path_or_buf=raw_filepath + "/all_data.csv")
-
-#     df_all.plot("theta", "y_norm", kind="scatter")
-
-#     """#**Testing Sampling**"""
-
-#     w = df_e_annih_mu["y"].astype(float).round(4)
-#     w_dict = 1 / w.value_counts()
-
-#     def weight_lookup(x):
-#         x = np.round(x, 4)
-#         return w_dict[x]
-
-#     df_e_annih_mu["sample_weight"] = df_e_annih_mu["y"].apply(
-#         lambda x: weight_lookup(x)
-#     )
-
-#     rep_df = df_e_annih_mu.sample(n=1000, weights=df_e_annih_mu["sample_weight"])
-#     # print(rep_df['y'])
-#     rep_df["y"].hist(bins=10)
-
-
-if __name__ == "__main__":
-
-    def place_holder():
-        return 0
-
-    place_holder()
-    # main()
