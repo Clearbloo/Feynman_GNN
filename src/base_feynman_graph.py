@@ -1,6 +1,7 @@
 ## Standard libraries
 import itertools
 import numpy as np
+import warnings
 from typing import Iterable, Dict
 from error_classes import InvalidEdgeError
 
@@ -164,9 +165,9 @@ class FeynmanGraph:
         edges = self._adj_list
 
         if not self._nodes:
-            raise ValueError("No nodes in the graph to validate edges.")
+            warnings.warn("No nodes in the graph to validate edges.")
 
-        max_node_index = max(self._nodes)
+        max_node_index = max(self._nodes or [0])
         for edge in edges:
             # Check if each edge is a tuple of two integers
             if not (
@@ -275,7 +276,7 @@ class FeynmanGraph:
         """
         feats=self._node_feat_dict
         if not self._nodes:
-            raise ValueError("No nodes to validate features for.")
+            warnings.warn("No nodes to validate features for.")
 
         for node in self._nodes:
             if node not in feats:
@@ -329,7 +330,7 @@ class FeynmanGraph:
         feats=self._edge_feat_dict
 
         if not self.edge_index:
-            raise ValueError("No edges to validate features for.")
+            warnings.warn("No edges to validate features for.")
 
         for edge in self.edge_index:
             if edge not in feats:

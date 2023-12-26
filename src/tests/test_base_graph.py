@@ -1,7 +1,6 @@
 import sys
 import os.path as osp
 import numpy as np
-import pytest
 
 # Add the directory to the Python path
 script_dir = osp.dirname(osp.abspath(__file__))
@@ -68,7 +67,6 @@ class TestFeynmanGraph:
         graph = graph1 + graph2
         assert len(graph.edge_index) == 6
 
-    @pytest.mark.skip(reason="Not implemented yet")
     def test_validations(self):
         FeynmanGraph().validate_edge_feat()
         FeynmanGraph().validate_node_feat()
