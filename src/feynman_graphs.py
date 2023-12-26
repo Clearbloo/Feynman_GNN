@@ -1,24 +1,12 @@
 from base_feynman_graph import FeynmanGraph
 from typing import List
-from pandas import DataFrame
-# import constants
+# from pandas import DataFrame
 from particles import ParticleRegistry
+# import os.path as osp
 
-DATASETPATH = "./data"
-raw_filepath = f"{DATASETPATH}/raw"
-
-
-def graph_combine(graph1, graph2):
-    graph2[1][0] = [
-        x + len(graph1[0]) - 1 for x in graph2[1][0]
-    ]  # The -1 is included because the nodes are numbered starting from 0
-    graph2[1][1] = [x + len(graph1[0]) - 1 for x in graph2[1][1]]
-
-    nodes = graph1[0] + graph2[0]
-    edge_index = [graph1[1][0] + graph2[1][0], graph1[1][1] + graph2[1][1]]
-    edge_feat = graph1[2] + graph2[2]
-
-    return [nodes, edge_index, edge_feat]
+# CURRENT_DIR = osp.dirname(osp.abspath(__file__))
+# DATASETPATH = osp.join(osp.dirname(CURRENT_DIR), "data")
+# RAW_DIR = f"{DATASETPATH}/raw"
 
 
 # ## Diagram structures
@@ -160,7 +148,7 @@ def build_tree_diagrams(
     final_6,
     channel: FeynmanGraph,
     global_connect: bool,
-)-> List[DataFrame]:
+)-> List[FeynmanGraph]:
     """
     Function to make return all possbile diagrams with given initial and final states.
 
@@ -220,7 +208,7 @@ def diagram_builder_gluon(
     final_5,
     channel,
     global_connect: bool,
-) -> List[DataFrame]:
+) -> List[FeynmanGraph]:
     """
     Function to make return all possbile diagrams with initial and final states given
     Returns a list allowed graphs, which consist of Feyn_vertex, edge_index and edge_feat
