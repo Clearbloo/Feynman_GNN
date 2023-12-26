@@ -269,17 +269,19 @@ def build_tree_diagrams(
         5: final_5,
         6: final_6,
     }
-    channel.add_edge_feat(edge_feats)
 
     # create a list of allowed edges to insert between virtual nodes
     graphs = []
 
     # look for virtual nodes connected to virtual nodes
-    for e in channel.edge_index:
+    for e in channel().edge_index:
+        graph: FeynmanGraph = channel()
+        graph.add_edge_feat(edge_feats)
         if e[0] == [0,1,0] and e[1] == [0,1,0]:
             for p in propagators:
-                channel.edge_feat[e] = p
-                if channel.vertex_check():
-                    graphs.append(channel)
+                graph.edge_feat[e] = p
+                if graph.vertex_check():
+                    graph.make_edges_undirected()
+                    graphs.append(graph)
 
     return graphs
