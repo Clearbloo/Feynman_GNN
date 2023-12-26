@@ -2,7 +2,7 @@
 import itertools
 import numpy as np
 import warnings
-from typing import Iterable, Dict
+from typing import Iterable, Dict, NoReturn
 from error_classes import InvalidEdgeError
 
 import matplotlib
@@ -16,6 +16,7 @@ from matplotlib_inline.backend_inline import set_matplotlib_formats
 
 set_matplotlib_formats("svg", "pdf")  # For export
 matplotlib.rcParams["lines.linewidth"] = 2.0
+
 
 class FeynmanGraph:
     """
@@ -65,8 +66,9 @@ class FeynmanGraph:
         # TODO - Make some init values that pass the validations
         # self.validate_graph()
 
-    def Mfi_squared(self, p, theta):
-        raise Exception("No M_fi function has been defined")
+    def Mfi_squared(self, *args, **kwargs) -> NoReturn:
+        print(f"Passed {args, kwargs}")
+        raise NotImplementedError("No M_fi function has been defined")
 
     def get_num_nodes(self) -> int:
         """
@@ -85,7 +87,7 @@ class FeynmanGraph:
          - int: The number of edges in the graph. Doubled if undirected has been called
         """
         return len(self.edge_index)
-    
+
     def validate_graph(self):
         """
         TODO - docstring
@@ -94,50 +96,49 @@ class FeynmanGraph:
         self.validate_node_feat()
         self.validate_edge_index()
 
-
     def vertex_check(self) -> bool:
         """
         Checks if all vertices conserves quantities
-        
+
         Checked quantities:
         - Electric charge
         - Colour charge
-        
+
         TODO - also need to check:
         - Momentum
         - Weak isospin
         - Hypercharge
+
+        This function is the reason that the graphs must be directed, so that we can tell which edges are incoming and outgoing.
         """
-        edge_feat = self.edge_feat
+        edge_feat_dict = self._edge_feat_dict
         edge_index = self.edge_index
-        
-        for vertex in self.node_feat.keys():
-            # incoming indices since edge_index[1] are the destinations
-            inc_indices = [k for k, x in enumerate(edge_index[1]) if x == vertex]
-            inc_edges = [0] * len(edge_feat[0])
-            for n in inc_indices:
-                inc_edges = [sum(value) for value in zip(edge_feat[n], inc_edges)]
 
-            # outgoing indices since edge_index[0] are the sources
-            out_indices = [k for k, x in enumerate(edge_index[0]) if x == vertex]
-            out_edges = [0] * len(edge_feat[0])
-            for n in out_indices:
-                out_edges = [sum(value) for value in zip(edge_feat[n], out_edges)]
+        for vertex in self._nodes:
+            inc_edges = [e for e in edge_index if e[1] == vertex]
+            out_edges = [e for e in edge_index if e[0] == vertex]
 
-            current = [sum(value) for value in zip(inc_edges, [-x for x in out_edges])]
-            conservation = [
-                current[2]
-                + 0.5 * current[3],  # Left charge, weak isospin - 1/2 left hypercharge
-                current[4] + 0.5 * current[5],  # "" for the right chiral
-                current[6] - current[9],  # red colour charge conservation (red - anti-red)
-                current[7] - current[10],  # blue colour charge conservation (blue - anti-blue)
-                current[8] - current[11],  # green ""
+            inc_current = [edge_feat_dict[e] for e in inc_edges]
+            out_current = [edge_feat_dict[e] for e in out_edges]
+
+            current = [sum(x) for x in zip(*inc_current)] + [
+                sum(x) for x in zip(*out_current)
             ]
-            
-            if not all(float(charge) == 0.0 for charge in conservation):
-                return False
-        
-        return True
+
+            # Check conservations
+            # Left charge, weak isospin - 1/2 left hypercharge
+            # "" for the right chiral particles
+            # Red colour charge conservation
+            # Blue
+            # Green
+            conservation = [
+                current[2] + 0.5 * current[3],
+                current[4] + 0.5 * current[5],
+                current[6] - current[9],
+                current[7] - current[10],
+                current[8] - current[11],
+            ]
+            return all(float(charge) == 0.0 for charge in conservation)
 
     # SECTION - Edge methods
     @property
@@ -148,7 +149,9 @@ class FeynmanGraph:
         return sorted(self._adj_list)
 
     @edge_index.setter
-    def edge_index(self, edges: Iterable[tuple[int, int]] | Dict[int, int] | tuple[int, int]):
+    def edge_index(
+        self, edges: Iterable[tuple[int, int]] | Dict[int, int] | tuple[int, int]
+    ):
         """
         Adds new edges to edge index with a new set of edges.
 
@@ -168,13 +171,14 @@ class FeynmanGraph:
 
         self.add_edges(edges)
 
-
     @edge_index.deleter
     def edge_index(self):
         self._adj_list = set()
         self._nodes = set()
 
-    def add_edges(self, edges: Iterable[tuple[int, int]] | dict[int, list[int]] | tuple[int, int]):
+    def add_edges(
+        self, edges: Iterable[tuple[int, int]] | dict[int, list[int]] | tuple[int, int]
+    ):
         """
         Adds multiple edges to the graph. Each edge is a tuple of two integers.
 
@@ -192,12 +196,16 @@ class FeynmanGraph:
         self._nodes.update(itertools.chain.from_iterable(edges))
         self.validate_edge_index()
 
-        # Initialize node feature if it doesn't exist already      
-        self.add_node_feat({node: [] for node in self._nodes if node not in self._node_feat_dict})
+        # Initialize node feature if it doesn't exist already
+        self.add_node_feat(
+            {node: [] for node in self._nodes if node not in self._node_feat_dict}
+        )
         self.validate_node_feat()
 
         # Initialize edge feature if it doesn't exist already
-        self.add_edge_feat({edge: [] for edge in edges if edge not in self._edge_feat_dict})
+        self.add_edge_feat(
+            {edge: [] for edge in edges if edge not in self._edge_feat_dict}
+        )
         self.validate_edge_feat()
 
     def validate_edge_index(self):
@@ -220,7 +228,9 @@ class FeynmanGraph:
                 and len(edge) == 2
                 and all(isinstance(n, int) for n in edge)
             ):
-                raise InvalidEdgeError(f"Edge must be a tuple of two integers, got: {edge}")
+                raise InvalidEdgeError(
+                    f"Edge must be a tuple of two integers, got: {edge}"
+                )
             # Check bounds
             if any(
                 node_index > max_node_index or node_index < 0 for node_index in edge
@@ -236,9 +246,10 @@ class FeynmanGraph:
                 if node < 0:
                     raise ValueError(f"Node index cannot be negative, got: {node}")
 
-    def make_edges_undirected(self):
+    def _undirected(self):
         """
         Make the graph undirected by adding reverse edges to the adjacency list and updating the edge features.
+        WARNING - This method should not be called. I am trialling the Feynman diagrams to be defined as directed graphs.
         """
         # Create a set for reverse edges
         reverse_edges = {
@@ -285,13 +296,13 @@ class FeynmanGraph:
         return [self._node_feat_dict[i] for i in sorted(self._nodes)]
 
     @node_feat.setter
-    def node_feat(self, feats: dict[int: list] | list[list]):
+    def node_feat(self, feats: dict[int:list] | list[list]):
         """
         Setter method for the node features of the Feynman graph. Adds new node features to the existing node features.
 
         Args:
             feats (dict[int: list] | list[list]): A dictionary mapping node indices to feature lists or a list of feature lists, assumed to be in the correct order.
-        
+
         # TODO add docs to explain what the correct order is
 
         Raises:
@@ -300,10 +311,12 @@ class FeynmanGraph:
         """
         if isinstance(feats, list):
             feats = {i: feat for i, feat in sorted(self._nodes)}
-        
+
         for node in feats:
             if int(node) not in self._nodes:
-                raise ValueError(f"Node {node} not initialized. Need to make the edges first.")
+                raise ValueError(
+                    f"Node {node} not initialized. Need to make the edges first."
+                )
 
         self.add_node_feat(feats)
 
@@ -311,7 +324,7 @@ class FeynmanGraph:
     def node_feat(self):
         self._node_feat_dict = {}
 
-    def add_node_feat(self, feats: dict[int: list]):
+    def add_node_feat(self, feats: dict[int:list]):
         self._node_feat_dict.update(feats)
         self.validate_node_feat()
 
@@ -319,7 +332,7 @@ class FeynmanGraph:
         """
         Function to test a given set of node features for validity. If no node features are given, the node features of the graph are tested by default.
         """
-        feats=self._node_feat_dict
+        feats = self._node_feat_dict
         if not self._nodes:
             warnings.warn("No nodes to validate features for.")
 
@@ -361,7 +374,7 @@ class FeynmanGraph:
     def edge_feat(self):
         self._edge_feat_dict = {}
 
-    def add_edge_feat(self, edge_feats: dict[tuple[int,int]: list]):
+    def add_edge_feat(self, edge_feats: dict[tuple[int, int] : list]):
         """
         TODO - docstring
         """
@@ -372,7 +385,7 @@ class FeynmanGraph:
         """
         Function to test a given set of edge features for validity. If no edge features are given, the edge features of the graph are tested by default.
         """
-        feats=self._edge_feat_dict
+        feats = self._edge_feat_dict
 
         if not self.edge_index:
             warnings.warn("No edges to validate features for.")
@@ -434,15 +447,19 @@ class FeynmanGraph:
         self.dataframe["y_norm"] = self.dataframe["y"] / self.dataframe["y"].max()
         self.dataframe["p_norm"] = self.dataframe["p"] / self.dataframe["p"].max()
         return self.dataframe
-    
+
     def __repr__(self):
         return f"FeynmanGraph(num_nodes={self.get_num_nodes()},node_feat={self.node_feat}, edge_feat={self.edge_feat}"
 
     def __add__(self, other: "FeynmanGraph"):
         # Check if the other object is also an instance of FeynmanGraph
         if not isinstance(other, FeynmanGraph):
-            raise TypeError("Unsupported operand type(s) for +: 'FeynmanGraph' and '{}'".format(type(other).__name__))
-        
+            raise TypeError(
+                "Unsupported operand type(s) for +: 'FeynmanGraph' and '{}'".format(
+                    type(other).__name__
+                )
+            )
+
         result = FeynmanGraph()
 
         # Relabel the nodes of the other graph
@@ -450,7 +467,10 @@ class FeynmanGraph:
         del other._nodes
         other._nodes = set(new_nodes)
 
-        new_edges = [(edge[0] + self.get_num_nodes(), edge[1] + self.get_num_nodes()) for edge in other.edge_index]
+        new_edges = [
+            (edge[0] + self.get_num_nodes(), edge[1] + self.get_num_nodes())
+            for edge in other.edge_index
+        ]
         del other.edge_index
         other.edge_index = new_edges
 
@@ -458,10 +478,15 @@ class FeynmanGraph:
         del other.node_feat
         other.node_feat = new_node_features
 
-        new_edge_features = {(edge[0] + self.get_num_nodes(), edge[1] + self.get_num_nodes()): other._edge_feat_dict[edge] for edge in other._edge_feat_dict}
+        new_edge_features = {
+            (
+                edge[0] + self.get_num_nodes(),
+                edge[1] + self.get_num_nodes(),
+            ): other._edge_feat_dict[edge]
+            for edge in other._edge_feat_dict
+        }
         del other.edge_feat
         other.edge_feat = new_edge_features
-
 
         # Add the edges
         result.edge_index = self.edge_index + other.edge_index
@@ -469,11 +494,11 @@ class FeynmanGraph:
         # REVIEW - I think it would be better to use self.node_feat and add the lists in these next two lines, but I'm afraid the order of the nodes will be wrong
 
         # Add the node features
-        result.node_feat = {**self._node_feat_dict, **other._node_feat_dict} 
+        result.node_feat = {**self._node_feat_dict, **other._node_feat_dict}
 
         # Add the edge features
         result.edge_feat = {**self._edge_feat_dict, **other._edge_feat_dict}
-        
+
         return result
 
 

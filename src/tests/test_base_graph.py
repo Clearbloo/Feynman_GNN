@@ -7,13 +7,12 @@ script_dir = osp.dirname(osp.abspath(__file__))
 sys.path.append(osp.dirname(script_dir))
 
 from base_feynman_graph import FeynmanGraph  # noqa: E402
-
+from particles import ParticleRegistry  # noqa: E402
 
 class TestBaseFeynmanGraph:
     def test_graph_creation(self):
         graph = FeynmanGraph()
         graph.edge_index = [(1, 2), (2, 3), (2, 4), (4, 5), (4, 6)]
-        graph.make_edges_undirected()
         for i in range(1, 7):
             graph.add_node_feat({i: [1, 0, 0]})
 
@@ -28,12 +27,6 @@ class TestBaseFeynmanGraph:
         graph = FeynmanGraph()
         graph.add_edges([(1, 2), (2, 3), (3, 4)])
         assert len(graph.edge_index) == 3
-
-    def test_make_edges_undirected(self):
-        graph = FeynmanGraph()
-        graph.add_edges([(1, 2), (2, 3), (3, 4)])
-        graph.make_edges_undirected()
-        assert (2, 1) in graph.edge_index and (3, 2) in graph.edge_index and (4, 3) in graph.edge_index
 
     def test_add_node_feat(self):
         graph = FeynmanGraph()
@@ -72,8 +65,12 @@ class TestBaseFeynmanGraph:
         FeynmanGraph().validate_node_feat()
         FeynmanGraph().validate_edge_index()
 
-        def test_vertex_check(self):
-            graph = FeynmanGraph()
-            graph.add_edges([(1, 2), (2, 3), (3, 4)])
-            assert graph.vertex_check(1) is True
-            assert graph.vertex_check(5) is False
+    def test_vertex_check(self):
+        E_Minus = ParticleRegistry.get_particle_class("e_minus")()
+        graph = FeynmanGraph()
+        graph.edge_index = [(1, 2), (2, 3), (3, 4)]
+        graph.node_feat = {1: [1, 0, 0]}
+        graph.edge_feat = {(1, 2): E_Minus.get_features()}
+        
+        assert not graph.vertex_check()
+        

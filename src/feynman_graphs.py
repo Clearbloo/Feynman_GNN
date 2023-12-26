@@ -188,7 +188,7 @@ def diagram_builder_gluon(
     Returns a list allowed graphs, which consist of Feyn_vertex, edge_index and edge_feat
     Changes: should allow feynman diagrams with False to be returned but force them to have matrix element 0; exclude certain vertices e.g. connecting electron to muon
 
-    FIXME - Old function, replaced by tree_diagram_builder
+    FIXME - Old function, replaced by build_tree_diagrams
     """
     Feyn_vertex, adj_class = channel
     num_edges = adj_class.graph_size()
