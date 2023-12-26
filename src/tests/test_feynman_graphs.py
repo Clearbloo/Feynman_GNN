@@ -9,7 +9,7 @@ from feynman_graphs import S_Channel  # noqa: E402
 
 
 class TestFeynmanGraphs:
-    def test_registry(self):
+    def test_s_channel(self):
         s_channel = S_Channel()
         assert s_channel.get_num_nodes() == 6
         s_channel.connect_global_node()
