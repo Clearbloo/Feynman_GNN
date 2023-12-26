@@ -74,7 +74,6 @@ class T_Channel(FeynmanGraph):
             6: final,
         }
 
-        print(initial, virtual, final)
 
 class U_Channel(FeynmanGraph):
     def __init__(self):
