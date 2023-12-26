@@ -40,17 +40,47 @@ class TestFeynmanGraphs:
         assert u_channel.edge_index
         assert u_channel.edge_feat
 
-    @pytest.mark.skip(reason="Test is broken. Waiting on vertex_check method to be fixed")
+    def test_vertex_check(self):
+        graph = S_Channel()
+        graph.add_node_feat(
+            {
+                1: [1, 0, 0],
+                2: [1, 0, 0],
+                3: [0, 1, 0],
+                4: [0, 1, 0],
+                5: [0, 0, 1],
+                6: [0, 0, 1],
+            }
+        )
+        e_minus = ParticleRegistry.get_particle_class("e_minus")()
+        e_plus = ParticleRegistry.get_particle_class("e_plus")()
+        mu_minus = ParticleRegistry.get_particle_class("mu_minus")()
+        mu_plus = ParticleRegistry.get_particle_class("mu_plus")()
+        photon = ParticleRegistry.get_particle_class("photon")()
+        edge_feat = {
+            (1, 3): e_minus.get_features(),
+            (2, 3): e_plus.get_features(),
+            (3, 4): photon.get_features(),
+            (4, 5): mu_minus.get_features(),
+            (4, 6): mu_plus.get_features(),
+        }
+        graph.add_edge_feat(edge_feat)
+        assert graph.vertex_check(debug=True)
+
     def test_build_tree_diagrams(self):
-        # FIXME - Test is broken. Waiting on vertex_check method to be fixed
-        E_minus: Type[Particle] = ParticleRegistry.get_particle_class("e_minus")
-        E_plus: Type[Particle] = ParticleRegistry.get_particle_class("e_plus")
+        E_minus: Type[Particle] = ParticleRegistry.get_particle_class("e_minus")()
+        E_plus: Type[Particle] = ParticleRegistry.get_particle_class("e_plus")()
         diagrams: List[DataFrame] = build_tree_diagrams(
-            E_minus(), E_plus(), E_minus(), E_plus(), S_Channel, ParticleRegistry.get_particle_class("photon"), True
+            E_minus.get_features(),
+            E_plus.get_features(),
+            E_minus.get_features(),
+            E_plus.get_features(),
+            T_Channel,
+            global_connect=True,
         )
         assert len(diagrams) == 1
-        assert diagrams[0].get_num_nodes() == 7
-        assert diagrams[0].graph_size() == 22
+        assert diagrams[0].get_num_nodes() == 6
+        assert diagrams[0].graph_size() == 5
         assert diagrams[0].node_feat
         assert diagrams[0].edge_index
         assert diagrams[0].edge_feat

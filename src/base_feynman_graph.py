@@ -96,7 +96,7 @@ class FeynmanGraph:
         self.validate_node_feat()
         self.validate_edge_index()
 
-    def vertex_check(self) -> bool:
+    def vertex_check(self, debug=False) -> bool:
         """
         Checks if all vertices conserves quantities
 
@@ -115,15 +115,18 @@ class FeynmanGraph:
         edge_index = self.edge_index
 
         for vertex in self._nodes:
+            if self._node_feat_dict[vertex] != [0,1,0]:
+                continue
             inc_edges = [e for e in edge_index if e[1] == vertex]
             out_edges = [e for e in edge_index if e[0] == vertex]
 
             inc_current = [edge_feat_dict[e] for e in inc_edges]
+            inc_current = np.sum(inc_current, axis=0)
             out_current = [edge_feat_dict[e] for e in out_edges]
+            out_current = np.sum(out_current, axis=0)
 
-            current = [sum(x) for x in zip(*inc_current)] + [
-                sum(x) for x in zip(*out_current)
-            ]
+            # inc_currents - out_currents
+            current = np.subtract(inc_current, out_current)
 
             # Check conservations
             # Left charge, weak isospin - 1/2 left hypercharge
@@ -138,7 +141,12 @@ class FeynmanGraph:
                 current[7] - current[10],
                 current[8] - current[11],
             ]
-            return all(float(charge) == 0.0 for charge in conservation)
+            if debug:
+                print(f"Vertex {vertex} conserves {conservation}")
+            
+            if not all(float(charge) == 0.0 for charge in conservation):
+                return False
+        return True
 
     # SECTION - Edge methods
     @property

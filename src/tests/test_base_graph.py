@@ -69,8 +69,7 @@ class TestBaseFeynmanGraph:
         E_Minus = ParticleRegistry.get_particle_class("e_minus")()
         graph = FeynmanGraph()
         graph.edge_index = [(1, 2), (2, 3), (3, 4)]
-        graph.node_feat = {1: [1, 0, 0]}
+        graph.node_feat = {1: [0, 1, 0]}
         graph.edge_feat = {(1, 2): E_Minus.get_features()}
         
         assert not graph.vertex_check()
-        
