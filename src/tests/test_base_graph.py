@@ -9,7 +9,7 @@ sys.path.append(osp.dirname(script_dir))
 from base_feynman_graph import FeynmanGraph  # noqa: E402
 
 
-class TestFeynmanGraph:
+class TestBaseFeynmanGraph:
     def test_graph_creation(self):
         graph = FeynmanGraph()
         graph.edge_index = [(1, 2), (2, 3), (2, 4), (4, 5), (4, 6)]
@@ -71,3 +71,9 @@ class TestFeynmanGraph:
         FeynmanGraph().validate_edge_feat()
         FeynmanGraph().validate_node_feat()
         FeynmanGraph().validate_edge_index()
+
+        def test_vertex_check(self):
+            graph = FeynmanGraph()
+            graph.add_edges([(1, 2), (2, 3), (3, 4)])
+            assert graph.vertex_check(1) is True
+            assert graph.vertex_check(5) is False

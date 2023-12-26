@@ -94,6 +94,51 @@ class FeynmanGraph:
         self.validate_node_feat()
         self.validate_edge_index()
 
+
+    def vertex_check(self) -> bool:
+        """
+        Checks if all vertices conserves quantities
+        
+        Checked quantities:
+        - Electric charge
+        - Colour charge
+        
+        TODO - also need to check:
+        - Momentum
+        - Weak isospin
+        - Hypercharge
+        """
+        edge_feat = self.edge_feat
+        edge_index = self.edge_index
+        
+        for vertex in self.node_feat.keys():
+            # incoming indices since edge_index[1] are the destinations
+            inc_indices = [k for k, x in enumerate(edge_index[1]) if x == vertex]
+            inc_edges = [0] * len(edge_feat[0])
+            for n in inc_indices:
+                inc_edges = [sum(value) for value in zip(edge_feat[n], inc_edges)]
+
+            # outgoing indices since edge_index[0] are the sources
+            out_indices = [k for k, x in enumerate(edge_index[0]) if x == vertex]
+            out_edges = [0] * len(edge_feat[0])
+            for n in out_indices:
+                out_edges = [sum(value) for value in zip(edge_feat[n], out_edges)]
+
+            current = [sum(value) for value in zip(inc_edges, [-x for x in out_edges])]
+            conservation = [
+                current[2]
+                + 0.5 * current[3],  # Left charge, weak isospin - 1/2 left hypercharge
+                current[4] + 0.5 * current[5],  # "" for the right chiral
+                current[6] - current[9],  # red colour charge conservation (red - anti-red)
+                current[7] - current[10],  # blue colour charge conservation (blue - anti-blue)
+                current[8] - current[11],  # green ""
+            ]
+            
+            if not all(float(charge) == 0.0 for charge in conservation):
+                return False
+        
+        return True
+
     # SECTION - Edge methods
     @property
     def edge_index(self) -> list:

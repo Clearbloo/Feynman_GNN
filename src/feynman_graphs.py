@@ -112,36 +112,7 @@ class U_Channel(FeynmanGraph):
 #
 # I first give the 4 non-zero matrix elements and then include two that are zero.
 
-
-def vertex_check(vertex, edge_feat, edge_index):
-    """
-    Function that returns a true or false based on whether quantities are conserved at the specified vertex
-    """
-    # incoming indices since edge_index[1] are the destinations
-    inc_indices = [k for k, x in enumerate(edge_index[1]) if x == vertex]
-    inc_edges = [0] * len(edge_feat[0])
-    for n in inc_indices:
-        inc_edges = [sum(value) for value in zip(edge_feat[n], inc_edges)]
-
-    # outgoing indices since edge_index[0] are the sources
-    out_indices = [k for k, x in enumerate(edge_index[0]) if x == vertex]
-    out_edges = [0] * len(edge_feat[0])
-    for n in out_indices:
-        out_edges = [sum(value) for value in zip(edge_feat[n], out_edges)]
-
-    current = [sum(value) for value in zip(inc_edges, [-x for x in out_edges])]
-    conservation = [
-        current[2]
-        + 0.5 * current[3],  # Left charge, weak isospin - 1/2 left hypercharge
-        current[4] + 0.5 * current[5],  # "" for the right chiral
-        current[6] - current[9],  # red colour charge conservation (red - anti-red)
-        current[7] - current[10],  # blue colour charge conservation (blue - anti-blue)
-        current[8] - current[11],  # green ""
-    ]
-    return all(float(charge) == 0.0 for charge in conservation)
-
-
-def build_tree_diagrams(
+def build_tree_diagrams_QED(
     initial_1,
     initial_2,
     final_5,
@@ -210,9 +181,14 @@ def diagram_builder_gluon(
     global_connect: bool,
 ) -> List[FeynmanGraph]:
     """
-    Function to make return all possbile diagrams with initial and final states given
+    Similar function to above. Returns all possbile diagrams with initial and final states given with a gluon propagator.
+
+    Returns
+    ---
     Returns a list allowed graphs, which consist of Feyn_vertex, edge_index and edge_feat
     Changes: should allow feynman diagrams with False to be returned but force them to have matrix element 0; exclude certain vertices e.g. connecting electron to muon
+
+    FIXME - Old function, replaced by tree_diagram_builder
     """
     Feyn_vertex, adj_class = channel
     num_edges = adj_class.graph_size()
@@ -237,7 +213,7 @@ def diagram_builder_gluon(
     # create a list of allowed edges to insert between virtual nodes
     graphs = []
     propagators = []
-    edge_position = []
+    # edge_position = []
     for i in range(len(edge_index[0])):  # len(edge_index[0] is the number of edges)
         # look for virtual nodes connected to virtual nodes
         if Feyn_vertex[edge_index[0][i]] == [0, 1, 0] and Feyn_vertex[
@@ -245,9 +221,9 @@ def diagram_builder_gluon(
         ] == [0, 1, 0]:  # 1-hot encoding for virtual nodes
             # cycle through list of bosons (just photons for now)
             edge_feat[i] = ParticleRegistry.get_particle_class("gluon_rbbar").get_feat()
-            if vertex_check(edge_index[0][i], edge_feat, edge_index):
-                propagators.append(edge_feat[i])
-                edge_position.append(i)
+            # if vertex_check(edge_index[0][i], edge_feat, edge_index):
+            #     propagators.append(edge_feat[i])
+            #     edge_position.append(i)
             if not propagators:  # checks to see if the list is empty
                 return []
 
@@ -275,3 +251,35 @@ def diagram_builder_gluon(
     graphs.append([Feyn_vertex, edge_index, edge_feat])
 
     return graphs[0]
+
+def build_tree_diagrams(
+    initial_1,
+    initial_2,
+    final_5,
+    final_6,
+    channel: FeynmanGraph,
+    propagators: list = [ParticleRegistry.get_particle_class("photon")],
+    global_connect: bool = True,
+)-> List[FeynmanGraph]:
+
+    # TODO - check to see if process is kinematically allowed by conserving energy, helicity and momentum (need to add). Maybe to vertex check, or maybe to a separate function called kinematic_check()
+    edge_feats = {
+        1: initial_1,
+        2: initial_2,
+        5: final_5,
+        6: final_6,
+    }
+    channel.add_edge_feat(edge_feats)
+
+    # create a list of allowed edges to insert between virtual nodes
+    graphs = []
+
+    # look for virtual nodes connected to virtual nodes
+    for e in channel.edge_index:
+        if e[0] == [0,1,0] and e[1] == [0,1,0]:
+            for p in propagators:
+                channel.edge_feat[e] = p
+                if channel.vertex_check():
+                    graphs.append(channel)
+
+    return graphs
