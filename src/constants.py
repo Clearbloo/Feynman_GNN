@@ -2,7 +2,6 @@ import numpy as np
 # **Define constants**
 # Always using natural units in MeV
 
-
 # lepton masses
 m_e = 0.5110
 m_mu = 105.6583755

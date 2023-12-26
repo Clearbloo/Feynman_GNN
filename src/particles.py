@@ -38,7 +38,7 @@ class ParticleRegistry:
         cls._registry[particle_class.__name__.lower()] = particle_class
 
     @classmethod
-    def get_particle_class(cls, name: str):
+    def get_particle_class(cls, name: str) -> Type["Particle"]:
         return cls._registry.get(name.lower())
 
     @classmethod
@@ -133,7 +133,7 @@ class E_minus(Particle):
         h = helicity
         p = 3-momentum vector
         """
-        Particle.__init__(self, m=m_e, S=0.5, LIW=-0.5, LY=-1, RIW=0, RY=-2)
+        Particle.__init__(self, mass=m_e, spin=0.5, left_weak_isospin=-0.5, left_hypercharge=-1, right_weak_isospin=0, right_hypercharge=-2)
 
 
 class E_plus(Particle):
@@ -146,7 +146,7 @@ class E_plus(Particle):
         h = helicity
         p = 3-momentum vector
         """
-        Particle.__init__(self, m=m_e, S=0.5, LIW=0, LY=2, RIW=0.5, RY=1)
+        Particle.__init__(self, mass=m_e, spin=0.5, left_weak_isospin=0, left_hypercharge=2, right_weak_isospin=0.5, right_hypercharge=1)
 
 
 class Mu_minus(Particle):
@@ -160,7 +160,7 @@ class Mu_minus(Particle):
         h = helicity
         p = 3-momentum vector
         """
-        Particle.__init__(self, m=m_mu, S=0.5, LIW=-0.5, LY=-1, RIW=0, RY=-2)
+        Particle.__init__(self, mass=m_mu, spin=0.5, left_weak_isospin=-0.5, left_hypercharge=-1, right_weak_isospin=0, right_hypercharge=-2)
 
 
 class Mu_plus(Particle):
@@ -173,7 +173,7 @@ class Mu_plus(Particle):
         h = helicity
         p = 3-momentum vector
         """
-        Particle.__init__(self, m=m_mu, S=0.5, LIW=0, LY=2, RIW=0.5, RY=1)
+        Particle.__init__(self, mass=m_mu, spin=0.5, left_weak_isospin=0, left_hypercharge=2, right_weak_isospin=0.5, right_hypercharge=1)
 
 
 ## ANCHOR Quark Classes
@@ -184,7 +184,7 @@ class Up_r(Particle):
 
     def __init__(self):
         Particle.__init__(
-            self, m=m_up, S=0.5, LIW=0.5, LY=1 / 3, RIW=0, RY=4 / 3, colour=[1, 0, 0]
+            self, mass=m_up, spin=0.5, left_weak_isospin=0.5, left_hypercharge=1 / 3, right_weak_isospin=0, right_hypercharge=4 / 3, colour=[1, 0, 0]
         )
 
 
@@ -196,12 +196,12 @@ class AntiUp_b(Particle):
     def __init__(self):
         Particle.__init__(
             self,
-            m=m_up,
-            S=0.5,
-            LIW=0,
-            LY=-4 / 3,
-            RIW=-0.5,
-            RY=-1 / 3,
+            mass=m_up,
+            spin=0.5,
+            left_weak_isospin=0,
+            left_hypercharge=-4 / 3,
+            right_weak_isospin=-0.5,
+            right_hypercharge=-1 / 3,
             anti_colour=[0, 1, 0],
         )
 
@@ -214,12 +214,12 @@ class Down_r(Particle):
     def __init__(self):
         Particle.__init__(
             self,
-            m=m_down,
-            S=0.5,
-            LIW=-0.5,
-            LY=1 / 3,
-            RIW=0,
-            RY=-2 / 3,
+            mass=m_down,
+            spin=0.5,
+            left_weak_isospin=-0.5,
+            left_hypercharge=1 / 3,
+            right_weak_isospin=0,
+            right_hypercharge=-2 / 3,
             colour=[1, 0, 0],
         )
 
@@ -231,7 +231,7 @@ class Charm_r(Particle):
 
     def __init__(self):
         Particle.__init__(
-            self, m=m_charm, S=0.5, LIW=0.5, LY=1 / 3, RIW=0, RY=4 / 3, colour=[1, 0, 0]
+            self, mass=m_charm, spin=0.5, left_weak_isospin=0.5, left_hypercharge=1 / 3, right_weak_isospin=0, right_hypercharge=4 / 3, colour=[1, 0, 0]
         )
 
 
@@ -243,12 +243,12 @@ class Strange_r(Particle):
     def __init__(self):
         Particle.__init__(
             self,
-            m=m_strange,
-            S=0.5,
-            LIW=-0.5,
-            LY=1 / 3,
-            RIW=0,
-            RY=-2 / 3,
+            mass=m_strange,
+            spin=0.5,
+            left_weak_isospin=-0.5,
+            left_hypercharge=1 / 3,
+            right_weak_isospin=0,
+            right_hypercharge=-2 / 3,
             colour=[1, 0, 0],
         )
 
@@ -260,7 +260,7 @@ class Top_r(Particle):
 
     def __init__(self):
         Particle.__init__(
-            self, m=m_top, S=0.5, LIW=0.5, LY=1 / 3, RIW=0, RY=4 / 3, colour=[1, 0, 0]
+            self, mass=m_top, spin=0.5, left_weak_isospin=0.5, left_hypercharge=1 / 3, right_weak_isospin=0, right_hypercharge=4 / 3, colour=[1, 0, 0]
         )
 
 
@@ -272,12 +272,12 @@ class AntiTop_b(Particle):
     def __init__(self):
         Particle.__init__(
             self,
-            m=m_top,
-            S=0.5,
-            LIW=0,
-            LY=-4 / 3,
-            RIW=-0.5,
-            RY=-1 / 3,
+            mass=m_top,
+            spin=0.5,
+            left_weak_isospin=0,
+            left_hypercharge=-4 / 3,
+            right_weak_isospin=-0.5,
+            right_hypercharge=-1 / 3,
             anti_colour=[0, 1, 0],
         )
 
@@ -290,12 +290,12 @@ class Bottom_r(Particle):
     def __init__(self):
         Particle.__init__(
             self,
-            m=m_bottom,
-            S=0.5,
-            LIW=-0.5,
-            LY=1 / 3,
-            RIW=0,
-            RY=-2 / 3,
+            mass=m_bottom,
+            spin=0.5,
+            left_weak_isospin=-0.5,
+            left_hypercharge=1 / 3,
+            right_weak_isospin=0,
+            right_hypercharge=-2 / 3,
             colour=[1, 0, 0],
         )
 
@@ -307,7 +307,7 @@ class Photon(Particle):
     """
 
     def __init__(self):
-        Particle.__init__(self, m=0, S=1, LIW=0, LY=0, RIW=0, RY=0)
+        Particle.__init__(self, mass=0, spin=1, left_weak_isospin=0, left_hypercharge=0, right_weak_isospin=0, right_hypercharge=0)
 
 
 class Gluon_rbbar(Particle):
@@ -318,12 +318,12 @@ class Gluon_rbbar(Particle):
     def __init__(self):
         Particle.__init__(
             self,
-            m=0,
-            S=1,
-            LIW=0,
-            LY=0,
-            RIW=0,
-            RY=0,
+            mass=0,
+            spin=1,
+            left_weak_isospin=0,
+            left_hypercharge=0,
+            right_weak_isospin=0,
+            right_hypercharge=0,
             colour=[1, 0, 0],
             anti_colour=[0, 1, 0],
         )
@@ -335,7 +335,7 @@ class W_plus(Particle):
     """
 
     def __init__(self):
-        Particle.__init__(self, m=m_W, S=1, LIW=1, LY=0, RIW=0, RY=0)
+        Particle.__init__(self, mass=m_W, spin=1, left_weak_isospin=1, left_hypercharge=0, right_weak_isospin=0, right_hypercharge=0)
 
 
 class W_minus(Particle):
@@ -344,7 +344,7 @@ class W_minus(Particle):
     """
 
     def __init__(self):
-        Particle.__init__(self, m=m_W, S=1, LIW=-1, LY=0, RIW=0, RY=0)
+        Particle.__init__(self, mass=m_W, spin=1, left_weak_isospin=-1, left_hypercharge=0, right_weak_isospin=0, right_hypercharge=0)
 
 
 class Z_0(Particle):
@@ -353,7 +353,7 @@ class Z_0(Particle):
     """
 
     def __init__(self):
-        Particle.__init__(self, m=m_Z, S=1, LIW=0, LY=0, RIW=0, RY=0)
+        Particle.__init__(self, mass=m_Z, spin=1, left_weak_isospin=0, left_hypercharge=0, right_weak_isospin=0, right_hypercharge=0)
 
 
 class Higgs(Particle):
@@ -362,4 +362,4 @@ class Higgs(Particle):
     """
 
     def __init__(self):
-        Particle.__init__(self, m=m_H, S=0, LIW=-0.5, LY=1, RIW=0, RY=0)
+        Particle.__init__(self, mass=m_H, spin=0, left_weak_isospin=-0.5, left_hypercharge=1, right_weak_isospin=0, right_hypercharge=0)
