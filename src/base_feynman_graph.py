@@ -523,10 +523,6 @@ class GraphVisualizer:
         ---
         display (False): choose whether to show graph
         """
-        if not self._adj_list:
-            raise ValueError("Cannot display an empty graph.")
-
-        G = nx.Graph()
         adj_dict = self.get_adj_dict()
 
         if not adj_dict:
