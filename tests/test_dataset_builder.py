@@ -15,7 +15,7 @@ class TestDatasetBuilder:
         E_Plus: type[Particle] = ParticleRegistry.get_particle_class("E_Plus")()
         E_Minus: type[Particle] = ParticleRegistry.get_particle_class("E_Minus")()
 
-        graphs = build_tree_diagrams(  # noqa: F841
+        graphs = build_tree_diagrams(
             E_Minus.get_features(),
             E_Plus.get_features(),
             E_Minus.get_features(),
@@ -23,6 +23,8 @@ class TestDatasetBuilder:
             T_Channel,
             global_connect=True,
         )
+
         assert len(graphs) == 1
-        assert len(graphs[0].edge_index) == 5
+        breakpoint()
+        assert len(graphs[0].edges) == 5
         assert len(graphs[0].node_feat) == 6

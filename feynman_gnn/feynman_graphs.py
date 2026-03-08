@@ -1,5 +1,6 @@
 from base_feynman_graph import FeynmanGraph
 from typing import List
+
 # from pandas import DataFrame
 from particles import ParticleRegistry, Particle
 # import os.path as osp
@@ -112,6 +113,7 @@ class U_Channel(FeynmanGraph):
 #
 # I first give the 4 non-zero matrix elements and then include two that are zero.
 
+
 def build_tree_diagrams_QED(
     initial_1,
     initial_2,
@@ -119,7 +121,7 @@ def build_tree_diagrams_QED(
     final_6,
     channel: FeynmanGraph,
     global_connect: bool,
-)-> List[FeynmanGraph]:
+) -> List[FeynmanGraph]:
     """
     Function to make return all possbile diagrams with given initial and final states.
 
@@ -138,20 +140,15 @@ def build_tree_diagrams_QED(
     graph: FeynmanGraph = channel()
 
     # TODO - check to see if process is kinematically allowed by conserving energy, helicity and momentum (need to add)
-    edge_feats = {
-        1: initial_1,
-        2: initial_2,
-        5: final_5,
-        6: final_6,
-    }
-    graph.add_edge_feat(edge_feats)
+    edge_feats = {1: initial_1, 2: initial_2, 5: final_5, 6: final_6}
+    graph.add_edge_feats(edge_feats)
 
     # create a list of allowed edges to insert between virtual nodes
     graphs = []
 
     # look for virtual nodes connected to virtual nodes
-    for e in graph.edge_index:
-        if e[0] == [0,1,0] and e[1] == [0,1,0]:
+    for e in graph.edges:
+        if e[0] == [0, 1, 0] and e[1] == [0, 1, 0]:
             graph.edge_feat[e] = ParticleRegistry.get_particle_class("photon")
 
     # cycle through edge_position
@@ -252,6 +249,7 @@ def diagram_builder_gluon(
 
     return graphs[0]
 
+
 def build_tree_diagrams(
     initial_1,
     initial_2,
@@ -260,31 +258,32 @@ def build_tree_diagrams(
     channel: FeynmanGraph,
     propagators: list["Particle"] = [ParticleRegistry.get_particle_class("photon")()],
     global_connect: bool = True,
-)-> List[FeynmanGraph]:
-
+) -> List[FeynmanGraph]:
     # TODO - check to see if process is kinematically allowed by conserving energy, helicity and momentum (need to add). Maybe to vertex check, or maybe to a separate function called kinematic_check()
     # FIXME - This only works for the T-Channel, because the edge features are hard coded. Need to make it work for all channels!!
     edge_feats = {
-        (1,3): initial_1,
-        (2,4): initial_2,
-        (3,5): final_5,
-        (4,6): final_6,
+        (1, 3): initial_1,
+        (2, 4): initial_2,
+        (3, 5): final_5,
+        (4, 6): final_6,
     }
 
     # create a list of allowed edges to insert between virtual nodes
     graphs = []
 
     graph: FeynmanGraph = channel()
-    graph.add_edge_feat(edge_feats)
+    graph.add_edge_feats(edge_feats)
 
     # look for virtual nodes connected to virtual nodes
-    for e in channel().edge_index:
-        if graph._node_feat_dict[e[0]] == [0,1,0] and graph._node_feat_dict[e[1]] == [0,1,0]:
+    for e in graph.edges:
+        if (graph.node_feat[e[0]] == [0, 1, 0]) and (
+            graph.node_feat[e[1]] == [0, 1, 0]
+        ):
             for p in propagators:
-                graph._edge_feat_dict[e] = p.get_features()
+                graph.edge_feat[e] = p.features()
                 if graph.vertex_check():
                     graphs.append(graph)
                     graph = channel()
-                    graph.add_edge_feat(edge_feats)
+                    graph.add_edge_feats(edge_feats)
 
     return graphs

@@ -10,7 +10,7 @@ from feynman_graphs import (
     T_Channel,
     # U_Channel,
     build_tree_diagrams,
-    diagram_builder_gluon
+    diagram_builder_gluon,
 )
 from particles import Particle, ParticleRegistry
 
@@ -151,6 +151,7 @@ def QED_dataset_builder():
 
     df_annih.plot("theta", "y_norm", kind="scatter")
     return df_merge, df_e_annih_mu, df_annih, df_e_annih_e, df_e_annih
+
 
 def QCD_dataset_builder():
     # ## QCD

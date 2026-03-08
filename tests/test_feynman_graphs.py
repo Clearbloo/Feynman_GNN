@@ -19,7 +19,7 @@ class TestFeynmanGraphs:
         s_channel.connect_global_node()
         assert s_channel.get_num_nodes() == 7
         assert s_channel.node_feat
-        assert s_channel.edge_index
+        assert s_channel.edges
         assert s_channel.edge_feat
 
     def test_t_channel(self):
@@ -28,7 +28,7 @@ class TestFeynmanGraphs:
         t_channel.connect_global_node()
         assert t_channel.get_num_nodes() == 7
         assert t_channel.node_feat
-        assert t_channel.edge_index
+        assert t_channel.edges
         assert t_channel.edge_feat
 
     def test_u_channel(self):
@@ -37,12 +37,12 @@ class TestFeynmanGraphs:
         u_channel.connect_global_node()
         assert u_channel.get_num_nodes() == 7
         assert u_channel.node_feat
-        assert u_channel.edge_index
+        assert u_channel.edges
         assert u_channel.edge_feat
 
     def test_vertex_check(self):
         graph = S_Channel()
-        graph.add_node_feat(
+        graph.add_node_feats(
             {
                 1: [1, 0, 0],
                 2: [1, 0, 0],
@@ -58,23 +58,23 @@ class TestFeynmanGraphs:
         mu_plus = ParticleRegistry.get_particle_class("mu_plus")()
         photon = ParticleRegistry.get_particle_class("photon")()
         edge_feat = {
-            (1, 3): e_minus.get_features(),
-            (2, 3): e_plus.get_features(),
-            (3, 4): photon.get_features(),
-            (4, 5): mu_minus.get_features(),
-            (4, 6): mu_plus.get_features(),
+            (1, 3): e_minus.features,
+            (2, 3): e_plus.features,
+            (3, 4): photon.features,
+            (4, 5): mu_minus.features,
+            (4, 6): mu_plus.features,
         }
-        graph.add_edge_feat(edge_feat)
+        graph.add_edge_feats(edge_feat)
         assert graph.vertex_check(debug=True)
 
     def test_build_tree_diagrams(self):
         E_minus: Type[Particle] = ParticleRegistry.get_particle_class("e_minus")()
         E_plus: Type[Particle] = ParticleRegistry.get_particle_class("e_plus")()
         diagrams: List[DataFrame] = build_tree_diagrams(
-            E_minus.get_features(),
-            E_plus.get_features(),
-            E_minus.get_features(),
-            E_plus.get_features(),
+            E_minus.features,
+            E_plus.features,
+            E_minus.features,
+            E_plus.features,
             T_Channel,
             global_connect=True,
         )
